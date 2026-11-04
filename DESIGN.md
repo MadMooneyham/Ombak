@@ -185,7 +185,7 @@ under it, and on the keyboard as Penumbra's emulator has them).
   gong). **ALGO** is the tempo. The black keys bring the elaborating parts in and out (9 kotekan, 10 reyong,
   11 ornaments), each at once, so a piece can begin with the core and the gongs and open out.
 - **Change place at the gong.** On HOME, **SELECT** walks the modes (selisir, tembung, sunaren, baro; pathet
-  nem, barang); **PRESETS** walks the gamelan (gendèr wayang, semar pegulingan, angklung, gong gede). Either
+  nem, barang); **PRESETS** walks the gamelan (gendèr wayang, semar pegulingan, angklung, STILL, gong gede). Either
   arrives with the next gong, as a real ensemble would change, and HOME shows what is coming (`SELISIR →
   TEMBUNG`). Stopped, they change at once.
 - **Take the gongs.** **ARP** switches the gongs between the cycle and your hand (lit: the cycle keeps them).
@@ -204,9 +204,9 @@ under it, and on the keyboard as Penumbra's emulator has them).
 | Control | HOME | Elsewhere |
 | --- | --- | --- |
 | White keys | Your gendèr; the next core note | The same |
-| Black 1-5 | Gong, gong lanang, kempur, kemong, kajar (held: shape that gong, later) | The same |
-| Black 6-8 | Faster, slower, the ending | The same |
-| Black 9-11 | Kotekan, reyong, ornaments in and out (lit: in; held: shape that part, later) | The same |
+| Black 1-5 | Gong, gong lanang, kempur, kemong, kajar (held: shape that gong) | The same |
+| Black 6-8 | Faster, slower, the ending (held: shape the cue; 6 and 7 keep going) | The same |
+| Black 9-11 | Kotekan, reyong, ornaments in and out (lit: in; held: shape that part) | The same |
 | K1-K4 | OMBAK, DENSITY, SPACE, BREATH | The page's four |
 | SELECT | The mode, at the next gong | The page or row |
 | PRESETS | The gamelan, at the next gong | The same |
@@ -214,7 +214,7 @@ under it, and on the keyboard as Penumbra's emulator has them).
 | SEQ | The cycle: start, stop | |
 | ARP | The gongs: the cycle or the hand | |
 | REC / PLAY | Loop: record (cancel); hold, play; PLAY held: clear | |
-| ENV / FX / EDIT / LFO / GLO | SHAPE / SPACE / GAMELAN / LIBRARY / SYSTEM | Again: the next page or row |
+| ENV / FX / EDIT / LFO / GLO | SHAPE / SPACE / GAMELAN / LIBRARY / SYSTEM (FX held: the throws) | Again: the next page or row |
 | SEL | | LIBRARY: open; GAMELAN: change the row |
 | SAVE | Save now | |
 | OCT− / OCT+ | The white keys' octave | |
@@ -247,13 +247,56 @@ Settled on the way: TIDES' BRIGHT and SWELL became one SWELL (struck bronze grow
 together), and PAN has four places, the elaboration moving as one (the reyong sits right of the kotekan
 within it).
 
+### Slow and still: a principle for everything
+
+Ombak plays traditional forms, and it also slows right down for ambient meditation (David, 2026-11-04). So
+nothing may assume a beat comes soon, and every design is checked at both ends:
+
+- **The tempo** reaches from 96 down to 3 core beats a minute: a core note every 20 seconds. ALGO moves it in
+  steps of 4%, so the slow end is as fine as the fast, and below 12 a minute the screen shows seconds a beat
+  (`10.0 S A BEAT`). Holding SLOWER sinks it further, as long as you hold.
+- **Rings and spaces** last: RING reaches four times as made (a gendèr note rings over 20 seconds), each gong
+  has its own RING and HUM, the reverb's DECAY reaches 40 seconds, and FREEZE holds the space indefinitely.
+- **The cycle can thin out:** 4-beat cycles as well as 8, 16 and 32; each gong can sound every other cycle or
+  not at all; the kajar can stop keeping the beat.
+- **The elaboration** keeps its own grid (2 to 16 notes a beat), so at ten seconds a beat the kotekan can still
+  ripple, or thin to a note now and then (SPARSE), or stop.
+- **STILL** is a gamelan in the library that is Ombak's own, not a tradition, and says so: the gendèr and the
+  gongs, a core note every ten seconds, long rings, no kajar, a deep space.
+
+### The holds
+
+While a key or FX is held, K1-K4 (and ALGO) play something else, as in Penumbra; the screen shows the hold
+(after 0.3 s, so playing never flickers it) with its knobs as dials and the strip. A gong, a part or a cue:
+the change stays. A white key (bends) and FX (throws): let go and they drift back over a couple of seconds;
+SAVE while holding FX keeps the throws until FX is next held and a knob turned.
+
+| Hold | K1 | K2 | K3 | K4 | ALGO |
+| --- | --- | --- | --- | --- | --- |
+| A gong (black 1-5) | LEVEL | TONE (which tone of the mode it sounds) | HUM | RING | PLACES: off, as made, every other cycle (the lanang: off as made, or answering the gong at the half; the kajar: every beat or every other) |
+| FASTER / SLOWER (6, 7) | STEP (each press; held, a step every two seconds) | GLIDE (how fast the ensemble follows) | | | |
+| ENDING (8) | AFTER (the next gong, or the one after) | SLOWING | THINNING | | |
+| KOTEKAN (9) | DENSITY (as HOME's, or 2, 4, 8, 16 a beat) | REGISTER | TURN (where in the beat it turns to the next note) | SPARSE | Its level |
+| REYONG (10) | RATE (half the kotekan, or a quarter) | REGISTER | TURN | SPARSE | Its level |
+| ORNAMENTS (11) | PICKUP (how early the next note comes) | OCTAVES (the core in octaves on the beat) | REGISTER | SPARSE | Their level |
+| A white key (bends, on that note) | SHIMMER (into the space) | OMBAK (its own beat: still to ×3) | PLACE | SWELL | |
+| FX (throws) | SHIMMER | FREEZE (the space holds; new sound stops going in) | DIP (low-pass left, high-pass right) | HUSH (the core and elaboration fall away; the gongs and your gendèr stay) | OMBAK (thrown slower or faster) |
+| ENV | A/B, as Penumbra's (later) | | | | |
+
+- **A gong key strikes when pressed** (it is an instrument); holding it to shape it shapes the next strokes.
+- **A part key toggles when let go,** unless its knobs were turned, so shaping a part never switches it.
+- **A white key held is not damped** by the next note you play: two hands, as a gendèr player's, one holding
+  a note ringing while the other moves on.
+- **FX pressed** opens the FX page; **FX held** is the throws.
+
+FREEZE, HUSH and holding SLOWER are the meditative gestures: let the space hold, let the ensemble fall away
+to the gongs and your own notes, let the tempo sink.
+
 ### Still to design
 
-The holds (a gong key: LEVEL, PITCH (which tone), HUM, DECAY; a part key: its density, register, figure;
-FX: throws such as SHIMMER, FREEZE, DIP and a swell to the tide's crest), A/B as Penumbra's ENV hold, user
-gamelan and saving, MIDI (the core and the gendèr on channels, the cues as notes, the macros as CCs), SLEEP,
-and the cheat sheet. Penumbra's delay is left out for now: the gamelan's own ringing and the ombak fill that
-space.
+A/B as Penumbra's ENV hold, user gamelan and saving, MIDI (the core and the gendèr on channels, the cues as
+notes, the macros as CCs), SLEEP, and the cheat sheet. Penumbra's delay is left out for now: the gamelan's
+own ringing and the ombak fill that space.
 
 ## When the firmware starts: what comes from Penumbra
 

@@ -115,9 +115,9 @@ kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-si
         <div class="ctl"><label for="tun">Tuning</label><select id="tun"></select></div>
         <div class="ctl"><label for="mode">Mode <output id="modeOut"></output></label><select id="mode"></select></div>
         <div class="ctl"><label for="cyc">Gong cycle</label><select id="cyc">
-          <option value="8">8 beats</option><option value="16">16 beats</option><option value="32">32 beats</option></select></div>
+          <option value="4">4 beats</option><option value="8">8 beats</option><option value="16">16 beats</option><option value="32">32 beats</option></select></div>
         <div class="ctl"><label for="ombak">Ombak <output id="ombakOut"></output></label><input id="ombak" type="range" min="0" max="100" step="1"></div>
-        <div class="ctl"><label for="tempo">Tempo (core beats/min) <output id="tempoOut"></output></label><input id="tempo" type="range" min="18" max="96" step="1"></div>
+        <div class="ctl"><label for="tempo">Tempo (core beats/min) <output id="tempoOut"></output></label><input id="tempo" type="range" min="3" max="96" step="1"></div>
         <div class="ctl"><label for="breath">Breath <output id="breathOut"></output></label><input id="breath" type="range" min="0" max="100" step="1"></div>
         <div class="ctl"><label for="density">Density <output id="densityOut"></output></label><input id="density" type="range" min="0" max="100" step="1"></div>
         <div class="ctl"><label for="space">Space <output id="spaceOut"></output></label><input id="space" type="range" min="0" max="100" step="1"></div>
@@ -265,6 +265,11 @@ const ENSEMBLES = {
   angklung: { name: 'Angklung', tuning: 'angklung-mas', cycle: 8, auto: true, core: 'jublag', kot: 'gangsa',
     parts: { core: true, kot: true, ket: true, orn: false }, ombak: 6.5, bpm: 48, breath: 20, density: 55,
     hint: 'Four-tone slendro, gentle: the white keys climb four notes an octave.' },
+  still: { name: 'Still (Ombak\'s own)', tuning: 'gw-peliatan', cycle: 8, auto: true, core: 'gender', kot: 'gender',
+    parts: { core: true, kot: true, ket: false, orn: false }, ombak: 1.2, bpm: 6, breath: 40, density: 30,
+    space: 70, kajar: 0, ring: 0.85,
+    hint: 'Not a tradition: Ombak\'s own, for meditation. The gendèr and the gongs, a core note every ten seconds, ' +
+      'long rings, no kajar, a deep space. Hold SLOWER to sink further; hold FX for FREEZE and HUSH.' },
   gonggede: { name: 'Gong gede', tuning: 'gong-peliatan', cycle: 32, auto: true, core: 'jublag', kot: 'gangsa',
     parts: { core: true, kot: true, ket: true, orn: false }, ombak: 3, bpm: 32, breath: 60, density: 30,
     hint: 'The old, slow ceremonial ensemble: big gongs, long cycles, a breathing tempo.' },
@@ -336,7 +341,19 @@ const S = {
   pan: { rate: 0, offset: 0, parts: { gender: [0, 0.25], core: [-0.15, 0], kot: [0.1, 0], gongs: [0, 0] } },
   brightNow: 1, swellNow: 1, ombakNow: 4.5, panNow: {},
   // SHAPE: each part's level (1: as made, up to 1.27), and each instrument family's timbre (0.5: as made)
-  lvl: { gender: 1, core: 1, kot: 1, reyong: 1, gongs: 1 },
+  lvl: { gender: 1, core: 1, kot: 1, reyong: 1, orn: 1, gongs: 1 },
+  // the holds' settings. Each gong: level, tone (steps from as made), hum and ring (0.5: as made), places
+  // (0 off, 1 as made, 2 every other cycle; the lanang's 1 and 2 are at the half). Each elaborating part:
+  // its own density (0: HOME's), register, where it turns to the next note, how sparse it is
+  gongs: Object.fromEntries(['gong', 'lanang', 'kempur', 'kemong', 'kajar'].map(k =>
+    [k, { level: 1, tone: 0, hum: 0.5, ring: 0.5, places: k === 'lanang' ? 0 : 1 }])),
+  elab: {
+    kot: { sub: 0, reg: 0, turn: 0.5, sparse: 0 },
+    rey: { rate: 0, reg: 0, turn: 0.5, sparse: 0 },
+    orn: { pickup: 0.143, oct: 0.5, reg: 0, sparse: 0 },
+  },
+  cue: { step: 0.33, glide: 0.3 }, endCfg: { after: 0, slowing: 0.5, thinning: 0.5 },
+  throws: { shimmer: 0, freeze: 0, dip: 0, hush: 0, ombak: 0 }, throwsKept: false, cycleNo: 0,
   timbre: {
     gender: { bright: 0.5, ring: 0.5, bloom: 0.5, damp: 0.5 },
     bars: { bright: 0.5, ring: 0.5, mallet: 0.5, bloom: 0.5 },
@@ -386,18 +403,23 @@ function near(i, ref) {   // the instance of tone i nearest to index ref
 const noteName = i => SC.names[mod(i, SC.n)];
 
 // ---- audio ----
-let ctx = null, master, dry, send, comp, meter, noiseBuf, RV = null;
-const BUS = {};   // each part's place in the field
+let ctx = null, master, dry, send, comp, meter, noiseBuf, dipLP, dipHP, RV = null;
+const BUS = {}, PANS = {};   // each part's level, and its place in the field
 function ensureAudio() {
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
   ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
   comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.25;
   master = ctx.createGain(); master.gain.value = S.vol;
-  master.connect(comp); comp.connect(ctx.destination);
+  dipLP = ctx.createBiquadFilter(); dipLP.type = 'lowpass'; dipLP.frequency.value = 20000; dipLP.Q.value = -3.01;   // (FX's DIP)
+  dipHP = ctx.createBiquadFilter(); dipHP.type = 'highpass'; dipHP.frequency.value = 20; dipHP.Q.value = -3.01;
+  master.connect(dipLP); dipLP.connect(dipHP); dipHP.connect(comp); comp.connect(ctx.destination);
   meter = ctx.createAnalyser(); meter.fftSize = 1024; comp.connect(meter);   // (HOME's light follows it)
   dry = ctx.createGain(); dry.connect(master);
-  for (const p of PARTS) { const pn = ctx.createStereoPanner(); pn.pan.value = S.pan.parts[p.id][0]; pn.connect(dry); BUS[p.id] = pn; }
+  for (const p of PARTS) {   // each part: its level (HUSH) into its place
+    const g = ctx.createGain(), pn = ctx.createStereoPanner();
+    pn.pan.value = S.pan.parts[p.id][0]; g.connect(pn); pn.connect(dry); BUS[p.id] = g; PANS[p.id] = pn;
+  }
   RV = makeReverb();
   send = ctx.createGain(); send.gain.value = S.space * 0.9;
   dry.connect(send); send.connect(RV.input); RV.output.connect(master);
@@ -422,7 +444,7 @@ function SpaceVerbDSP(sr) {
   const buf = cap.map(c => new Float32Array(c)), w = new Int32Array(N);
   const d = new Float32Array(N), dcur = new Float32Array(N), dmod = new Float32Array(N), g = new Float32Array(N);
   const lp = new Float32Array(N), y = new Float32Array(N), ps = new Float32Array(PSLEN);
-  let t60 = 6, size = 1.1, shimmer = 0.2, mod = 0.5, dampC = 0.5, shimGain = 0, psInc = 1 / WIN, first = true;
+  let t60 = 6, size = 1.1, shimmer = 0.2, mod = 0.5, dampC = 0.5, shimGain = 0, psInc = 1 / WIN, first = true, freeze = 0;
   let hpX = 0, hpY = 0, modPh = 0, psW = 0, psPh = 0, shOut = 0, ctrl = 0;
   let hpC = Math.exp(-2 * Math.PI * 120 / sr);   // the send's low cut
   const slew = 1 - Math.exp(-CTRL / (0.3 * sr));   // a new SIZE glides
@@ -436,6 +458,7 @@ function SpaceVerbDSP(sr) {
     for (let j = 0; j < N; j++) {
       d[j] = MS[j] * size * sr / 1000;
       g[j] = Math.pow(10, -3 * d[j] / (t60 * sr));
+      g[j] += (0.99995 - g[j]) * freeze;   // FREEZE: the lines hold what they have (never quite unity)
       gs += g[j];
       if (first) dcur[j] = d[j];
     }
@@ -454,6 +477,7 @@ function SpaceVerbDSP(sr) {
     }
     if (p.interval != null) psInc = [1, 0.5, 2][p.interval] / WIN;   // the grains read faster by the interval less one
     if (p.lowcutHz != null) hpC = Math.exp(-2 * Math.PI * p.lowcutHz / sr);
+    if (p.freeze != null) freeze = p.freeze;
     recompute();
   };
   const rd = (b, c, wp, dl) => {
@@ -480,7 +504,7 @@ function SpaceVerbDSP(sr) {
           dmod[j] = dcur[j] + (j < 4 ? md * (1 + Math.sin(2 * Math.PI * (modPh + 0.27 * j))) : 0);
         }
       }
-      const x = (inL[i] + inR[i]) * 0.5;
+      const x = (inL[i] + inR[i]) * 0.5 * (1 - freeze);   // (frozen, new sound stops going in)
       hpY = hpC * (hpY + x - hpX); hpX = x;
       const xin = hpY + Math.tanh(shOut * shimGain);
       for (let j = 0; j < N; j++) { lp[j] += dampC * (rd(buf[j], cap[j], w[j], dmod[j]) - lp[j]); y[j] = lp[j]; }
@@ -549,7 +573,8 @@ registerProcessor('ombak-space', class extends AudioWorkletProcessor {
 function setReverb() {
   if (!RV) return;
   RV.output.gain.setTargetAtTime(0.8 * S.rv.level, ctx.currentTime, 0.05);
-  if (RV.set) RV.set({ ...S.rv, lowcutHz: 40 * Math.pow(10, S.rv.lowcut) });   // (LOW CUT: 40 to 400 Hz)
+  if (RV.set) RV.set({ ...S.rv, lowcutHz: 40 * Math.pow(10, S.rv.lowcut),   // (LOW CUT: 40 to 400 Hz)
+    shimmer: Math.min(1, S.rv.shimmer + S.throws.shimmer), freeze: S.throws.freeze });   // (and the throws)
 }
 
 // ---- TIDES: an even sine and a wandering one (a new height every half tide, eased into), blended by
@@ -580,6 +605,7 @@ function tideAgo(lag) {   // the tide lag tides ago; before it began, the middle
 // PAN's RATE: 0 the sway on the tide, else a cycle of its own, 60 s .. 0.5 s, evenly in octaves
 const panSecs = v => 60 * Math.pow(0.5 / 60, (v - 1) / 99);
 let lastMotion = 0, swayPh = 0;
+const sentThrows = { shimmer: 0, freeze: 0 };
 function motion() {
   const now = ctx.currentTime, dt = lastMotion ? Math.min(0.2, now - lastMotion) : 0, td = S.tide;
   lastMotion = now;
@@ -587,7 +613,7 @@ function motion() {
   const tv = T.now;
   S.brightNow = 1 + tv * td.swell * 0.6;   // (the ensemble swells as struck bronze does: louder and brighter)
   S.swellNow = 1 + tv * td.swell * 0.35;
-  S.ombakNow = S.ombak * (1 + tv * td.ombak * 0.5);
+  S.ombakNow = S.ombak * Math.pow(4, S.throws.ombak) * (1 + tv * td.ombak * 0.5);   // (FX held, ALGO: the ombak thrown)
   send.gain.setTargetAtTime(S.space * 0.9 * (1 + tv * td.space * 0.5), now, 0.05);
   if (S.pan.rate) swayPh = (swayPh + dt / panSecs(S.pan.rate)) % 1;
   // PAN 2: each swaying part follows the one before it, up to half a cycle behind (OFFSET)
@@ -600,21 +626,48 @@ function motion() {
       x += sway * (S.pan.rate ? Math.sin(2 * Math.PI * (swayPh - lag)) : tideAgo(lag));
     }
     S.panNow[p.id] = x = clamp(x, -1, 1);
-    BUS[p.id].pan.setTargetAtTime(x, now, 0.06);
+    PANS[p.id].pan.setTargetAtTime(x, now, 0.06);
+  }
+  // a cue held: the tempo keeps moving, a STEP every two seconds
+  if (UI.hold?.cue) {
+    S.targetBpm = clamp(S.targetBpm * Math.pow(1 + S.cue.step, UI.hold.cue * dt / 2), 3, 96);
+    $('tempo').value = S.targetBpm; $('tempoOut').textContent = tempoText(S.targetBpm).toLowerCase();
+  }
+  // the throws: while FX is held they are where the knobs put them; let go, they drift back (unless SAVE kept them)
+  const th = S.throws;
+  if (!UI.pending?.throws && !S.throwsKept) {
+    const k = Math.exp(-dt / 0.6);
+    for (const key in th) { th[key] *= k; if (Math.abs(th[key]) < 1e-3) th[key] = 0; }
+  }
+  const dip = th.dip;
+  dipLP.frequency.setTargetAtTime(dip < 0 ? 20000 * Math.pow(300 / 20000, -dip) : 20000, now, 0.05);
+  dipHP.frequency.setTargetAtTime(dip > 0 ? 20 * Math.pow(100, dip) : 20, now, 0.05);
+  for (const id of ['core', 'kot']) BUS[id].gain.setTargetAtTime(1 - th.hush, now, 0.15);   // (HUSH: the gongs and your gendèr stay)
+  if (Math.abs(th.shimmer - sentThrows.shimmer) > 0.003 || Math.abs(th.freeze - sentThrows.freeze) > 0.003) {
+    sentThrows.shimmer = th.shimmer; sentThrows.freeze = th.freeze; setReverb();
   }
 }
 
-// one stroke of a pair: pengumbang (f - beat/2) and pengisep (f + beat/2), a little apart in space
-function voice(name, f, t, vel, pan = 0, bus) {
+// one stroke of a pair: pengumbang (f - beat/2) and pengisep (f + beat/2), a little apart in space.
+// opt: gk, which gong (its own shaping); lk, the level it answers to; live, handles for a held note's bends
+function voice(name, f, t, vel, pan = 0, bus, opt = {}) {
   const spec = INST[name];
-  // SHAPE's timbre for this family (0.5: as made; x2 or /2 at the ends) and the part's level
-  const tm = S.timbre[GROUP[name]], gong = GROUP[name] === 'gongs', e2 = x => Math.pow(2, (x - 0.5) * 2);
-  const bright = gong ? 1 : e2(tm.bright), ring = gong ? 1 : e2(tm.ring);
+  // SHAPE's timbre for this family (0.5: as made; BRIGHT x2 or /2 at the ends, RING x4 or /4, for the long
+  // rings of slow playing) and the part's level
+  const tm = S.timbre[GROUP[name]], gong = GROUP[name] === 'gongs', gs = opt.gk ? S.gongs[opt.gk] : null;
+  const e2 = x => Math.pow(2, (x - 0.5) * 2), e4 = x => Math.pow(2, (x - 0.5) * 4);
+  const bright = gong ? 1 : e2(tm.bright), ring = gong ? (gs ? e4(gs.ring) : 1) : e4(tm.ring);
   const bloom = tm.bloom != null ? tm.bloom * 2 : 1, body = gong ? tm.body * 2 : 1, mallet = tm.mallet != null ? tm.mallet * 2 : 1;
   const beat = S.ombakNow * (spec.ombak ?? 1) * (gong ? e2(tm.ombak) : 1);   // the ombak, on the tide
-  const out = ctx.createGain(); out.gain.value = vel * spec.gain * S.lvl[name === 'reyong' ? 'reyong' : bus || 'gender'];
-  out.connect(BUS[bus] || dry);
-  const nodes = []; let end = t;
+  const base = vel * spec.gain * S.lvl[opt.lk || (name === 'reyong' ? 'reyong' : bus || 'gender')];
+  const out = ctx.createGain(); out.gain.value = base;
+  let to = BUS[bus] || dry, place = null, send = null;
+  if (opt.live) {   // a note of yours: its own place and its own way into the shimmer, for the white key's bends
+    place = ctx.createStereoPanner(); place.connect(to); to = place;
+    send = ctx.createGain(); send.gain.value = 0; out.connect(send); send.connect(RV.input);
+  }
+  out.connect(to);
+  const nodes = [], oscs = []; let end = t;
   for (const [sgn, side] of [[-0.5, -1], [0.5, 1]]) {
     const pn = ctx.createStereoPanner(); pn.pan.value = clamp(pan + side * spec.spread, -1, 1); pn.connect(out);
     const ff = f + sgn * beat;
@@ -625,20 +678,22 @@ function voice(name, f, t, vel, pan = 0, bus) {
       const a = op.a * (att >= 0.05 ? bloom : 1) * body, d = op.d * ring;   // (the slow-attack carriers are the resonators' bloom)
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a * 0.5, t + att); g.gain.setTargetAtTime(0, t + att, d / 6.9);
       o.connect(g); g.connect(pn);
+      oscs.push({ o, sgn, r: op.r });
       if (op.m) {
         const m = ctx.createOscillator(), mg = ctx.createGain(), mf = fr * op.m.r;
         m.frequency.setValueAtTime(mf, t);
         mg.gain.setValueAtTime(op.m.i * S.brightNow * bright * mf, t); mg.gain.setTargetAtTime(0, t, op.m.d / 6.9);
         m.connect(mg); mg.connect(o.frequency); m.start(t); nodes.push(m);
+        oscs.push({ o: m, sgn, r: op.r * op.m.r });
       }
       o.start(t); nodes.push(o); end = Math.max(end, t + att + d);
     }
     if (spec.hum) {   // the gong's hum, swelling after the stroke
       const h = spec.hum, o = ctx.createOscillator(), g = ctx.createGain();
       o.frequency.value = ff;
-      const ha = h.a * tm.hum * 2, hr = h.rise * e2(tm.swell);
-      g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(ha * 0.5, t, hr / 2.5); g.gain.setTargetAtTime(0, t + hr, h.d / 6.9);
-      o.connect(g); g.connect(pn); o.start(t); nodes.push(o); end = Math.max(end, t + hr + h.d);
+      const ha = h.a * tm.hum * 2 * (gs ? gs.hum * 2 : 1), hr = h.rise * e2(tm.swell), hd = h.d * ring;
+      g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(ha * 0.5, t, hr / 2.5); g.gain.setTargetAtTime(0, t + hr, hd / 6.9);
+      o.connect(g); g.connect(pn); o.start(t); nodes.push(o); end = Math.max(end, t + hr + hd);
     }
   }
   if (spec.noise) {   // the mallet
@@ -649,7 +704,7 @@ function voice(name, f, t, vel, pan = 0, bus) {
   }
   for (const n of nodes) n.stop(end + 0.05);
   nodes[0].onended = () => out.disconnect();
-  return { out, nodes, end };
+  return { out, nodes, end, base, f, beat, oscs, place, send };
 }
 function damp(v, t, tau = 0.06) {
   if (!v || t >= v.end) return;
@@ -660,32 +715,40 @@ function damp(v, t, tau = 0.06) {
 const held = {};   // the last stroke of each damped part
 function strike(slot, name, f, t, vel, pan, dampAfter) {
   if (dampAfter != null) damp(held[slot], t + dampAfter);
-  const v = voice(name, f, t, vel, pan, SLOT_BUS[slot]);
+  const v = voice(name, f, t, vel, pan, SLOT_BUS[slot], { lk: slot === 'orn' ? 'orn' : null });
   held[slot] = v;
   return v;
 }
 
 // ---- the gong cycle ----
-function placeOf(pos, L) {
+function placeOf(pos, L) {   // the cycle's places (where the marks sit on the rim)
   if (pos === 0) return 'gong';
   if (pos === L / 2) return 'kemong';
   if (pos % (L / 4) === 0) return 'kempur';
   return 'kajar';
 }
-function gongHz(kind) {
-  switch (kind) {
-    case 'gong': return pitch(fold(0, 44));
-    case 'lanang': return pitch(fold(0, 44) + 1);
-    case 'kempur': return pitch(fold(Math.min(3, SC.n - 1), 88));
-    case 'kemong': return pitch(fold(2, 280));
-    default: return pitch(fold(SC.n - 1, 620));
-  }
+// what the cycle strikes at a place, with each gong's PLACES (held: ALGO): off, as made, or every other cycle
+// (the kajar: every other beat); the lanang, off as made, can answer the gong at the half
+function strikesAt(pos, L, cycle) {
+  const P = k => S.gongs[k].places, keep = k => P(k) === 1 || (P(k) === 2 && cycle % 2 === 0), out = [];
+  if (pos === 0) { if (keep('gong')) out.push('gong'); }
+  else if (pos === L / 2) { if (keep('kemong')) out.push('kemong'); if (keep('lanang')) out.push('lanang'); }
+  else if (pos % (L / 4) === 0) { if (keep('kempur')) out.push('kempur'); }
+  if (P('kajar') === 1 || (P('kajar') === 2 && pos % 2 === 0)) out.push('kajar');
+  return out;
 }
+const GONG_TONE = { gong: () => 0, lanang: () => 1, kempur: () => Math.min(3, SC.n - 1), kemong: () => 2, kajar: () => SC.n - 1 };
+const GONG_LOW = { gong: 44, lanang: 44, kempur: 88, kemong: 280, kajar: 620 };
+function gongIdx(kind) {   // its tone, moved by its hold's TONE (the lanang stays above the gong)
+  const t = GONG_TONE[kind]() + S.gongs[kind].tone;
+  return kind === 'lanang' ? fold(S.gongs.gong.tone, 44) + 1 + S.gongs.lanang.tone : fold(t, GONG_LOW[kind]);
+}
+const gongHz = kind => pitch(gongIdx(kind));
 const hits = [];   // {pos, t} for the circle's flashes
 function playGong(kind, t, vel = 1) {
   const name = kind === 'lanang' ? 'gong' : kind;
-  if (name === 'gong') S.lastGong = t;   // (HOME's gong flares)
-  voice(name, gongHz(kind), t, vel, kind === 'lanang' ? 0.15 : kind === 'gong' ? -0.1 : 0, 'gongs');
+  if (name === 'gong') S.lastGong = t;   // (HOME's light flares)
+  voice(name, gongHz(kind), t, vel * S.gongs[kind].level, kind === 'lanang' ? 0.15 : kind === 'gong' ? -0.1 : 0, 'gongs', { gk: kind });
 }
 
 // ---- the scheduler: a look-ahead clock, one beat = one core note, split into subdivisions ----
@@ -696,7 +759,12 @@ function tick() {
   const ahead = ctx.currentTime + 0.12;
   while (S.running && sched.nextT < ahead) scheduleSub(sched.nextT);
 }
-function subdivisions() { return S.density < 0.08 ? 1 : S.density < 0.55 ? 4 : 8; }
+// the beat runs on a grid of 16; each part plays on its own grid within it (the kotekan's 2, 4, 8 or 16 a
+// beat, the reyong at half or a quarter of that), so a part can be denser or sparser than the rest
+const GRID = 16;
+function kotSub() {   // the kotekan's notes a beat: its hold's DENSITY, else HOME's
+  return S.elab.kot.sub || (S.density < 0.08 ? 0 : S.density < 0.55 ? 4 : 8);
+}
 function nextCore() {
   if (S.loop.state === 'play') return S.loop.notes[(S.loop.i) % S.loop.len];
   return S.next ?? S.C;
@@ -708,6 +776,7 @@ function beginBeat(t) {
     else { S.mode = S.pendMode; S.pendMode = null; computeScale(); fillModes(); refresh(); }
   }
   const L = S.cycleLen, pos = S.pos;
+  if (pos === 0 && S.beatNo > 0) S.cycleNo++;
   // the core note for this beat
   if (S.loop.state === 'play') { S.C = S.loop.notes[S.loop.i % S.loop.len]; S.loop.i++; }
   else if (S.next != null) { S.C = S.next; S.next = null; }
@@ -716,22 +785,24 @@ function beginBeat(t) {
     S.loop.notes.push(S.C);
     if (S.loop.notes.length >= S.loop.len) { S.loop.state = 'play'; S.loop.i = 0; S.loop.kept = true; say('Loop playing: the core is yours to elaborate over.'); }
   }
-  // tempo: glide toward the target, breathe across the cycle, slow for the ending
-  S.curBpm += (S.targetBpm - S.curBpm) * 0.3;
-  if (S.ending) { S.ending.beats++; S.endMul *= 1.09; }
+  // tempo: glide toward the target (the cues' GLIDE), breathe across the cycle, slow for the ending (its SLOWING)
+  S.curBpm += (S.targetBpm - S.curBpm) * S.cue.glide;
+  let final = false;
+  if (S.ending) {
+    S.ending.beats++; S.endMul *= 1 + S.endCfg.slowing * 0.18;
+    if (pos === 0 && S.ending.beats > 4) S.ending.gongs++;   // (closing on the next gong at least four beats away, or the one after)
+    final = S.ending.gongs > S.endCfg.after;
+  }
   const p = (pos + 1) / L;
   sched.dur = 60 / S.curBpm * (1 + S.breath * 0.9 * Math.pow(p, 4)) * S.endMul;
   sched.dyn = (1 + S.breath * 0.5 * Math.sin(Math.PI * p) - S.breath * 0.25) * S.swellNow;
-  sched.fade = S.ending ? Math.max(0.25, 1 - S.ending.beats * 0.08) : 1;
-  sched.sub = subdivisions();
-
-  const final = S.ending && pos === 0 && S.ending.beats > 4;
+  sched.fade = S.ending ? Math.max(0.2, 1 - S.ending.beats * S.endCfg.thinning * 0.16) : 1;
+  sched.sub = GRID;
   // the cycle's instruments at their places
-  const place = placeOf(pos, L);
   if (S.auto || final) {
-    if (place === 'gong') { playGong('gong', t); playGong('kajar', t, 0.9); }
-    else { playGong(place, t, place === 'kajar' ? (pos % 2 ? 0.65 : 0.9) : 0.9); if (place !== 'kajar') playGong('kajar', t, 0.8); }
-    hits.push({ pos, t });
+    const ks = final ? ['gong'] : strikesAt(pos, L, S.cycleNo);
+    for (const k of ks) playGong(k, t, k === 'kajar' ? (pos % 2 ? 0.65 : 0.85) : 0.9);
+    if (ks.length) hits.push({ pos, t });
   }
   // the core
   if (S.C != null && S.parts.core) {
@@ -755,46 +826,51 @@ function beginBeat(t) {
 function scheduleSub(t) {
   if (sched.j === 0) beginBeat(t);
   if (!S.running) return;
-  const j = sched.j, sub = sched.sub, C = S.C;
-  if (C != null) elaborate(t, j, sub, C, nextCore());
+  const j = sched.j, C = S.C;
+  if (C != null) elaborate(t, j, C, nextCore());
   sched.j++;
-  sched.nextT = t + sched.dur / sub;
-  if (sched.j >= sub) { sched.j = 0; S.pos = (S.pos + 1) % S.cycleLen; S.beatNo++; }
+  sched.nextT = t + sched.dur / sched.sub;
+  if (sched.j >= sched.sub) { sched.j = 0; S.pos = (S.pos + 1) % S.cycleLen; S.beatNo++; }
 }
 
-// the interlocking parts and the reyong: leave the core note, turn toward the next before it arrives
-function kotekanNote(kc, kn, j, sub) {
+// the interlocking parts and the reyong: leave the core note, turn toward the next before it arrives. TURN is
+// where in the beat they turn (a quarter of the way to three quarters; as made, halfway)
+const turnAt = x => 0.25 + 0.5 * x;
+function kotekanNote(kc, kn, j, sub, turn) {
   if (j === 0) return kc;
   const up = kn > kc ? true : kn < kc ? false : S.beatNo % 2 === 0;
   const F = up ? [0, 1, -1] : [0, -1, 1];   // after the core note, circling it
   const B = up ? [0, -1, 1] : [0, 1, -1];   // before the next, circling it (counted back from its arrival)
-  return j < sub / 2 ? kc + F[j % 3] : kn + B[(sub - j) % 3];
+  return j < sub * turnAt(turn) ? kc + F[j % 3] : kn + B[(sub - j) % 3];
 }
-function elaborate(t, j, sub, C, N) {
-  const lvl = sched.dyn * sched.fade;
-  if (S.parts.kot && sub > 1) {
-    const lo = S.kotInst === 'gender' ? 250 : 300;
+function elaborate(t, j, C, N) {
+  const lvl = sched.dyn * sched.fade, E = S.elab, ks = kotSub();
+  const sparse = s => j !== 0 && Math.random() < s * 0.85;   // (SPARSE leaves notes out, never the landing)
+  if (S.parts.kot && ks && j % (GRID / ks) === 0) {
+    const jk = j / (GRID / ks), lo = (S.kotInst === 'gender' ? 250 : 300) * Math.pow(2, E.kot.reg);
     const kc = fold(C, lo); let kn = near(N, kc);
     if (pitch(kn) < lo * 0.94) kn += SC.n;
     if (pitch(kn) > lo * 2.6) kn -= SC.n;
-    const note = kotekanNote(kc, kn, j, sub);
-    const polos = j % 2 === 0;
+    const note = kotekanNote(kc, kn, jk, ks, E.kot.turn), polos = jk % 2 === 0;
     const v = (0.5 + S.density * 0.3) * lvl * rnd(0.85, 1.05) * (polos ? 1 : 0.92);
-    strike(polos ? 'polos' : 'sangsih', S.kotInst, pitch(note), t + (polos ? 0 : rnd(0, 0.006)), v, polos ? -0.4 : 0.4,
-      sched.dur / sub * 0.9);
+    if (!sparse(E.kot.sparse))
+      strike(polos ? 'polos' : 'sangsih', S.kotInst, pitch(note), t + (polos ? 0 : rnd(0, 0.006)), v, polos ? -0.4 : 0.4,
+        sched.dur / ks * 0.9);
   }
-  if (S.parts.ket && sub >= 4 && S.density > 0.2 && j % 2 === 0) {
-    const half = sub / 4, jj = j / 2;
-    const rc = fold(C, 480), rn = near(N, rc);
-    const note = jj < half ? rc + (jj % 2) : rn + ((jj - half) % 2);
-    strike('reyong', 'reyong', pitch(note), t, 0.6 * lvl * rnd(0.85, 1.05), 0.35, sched.dur / sub * 1.8);
+  const rs = ks >= 4 && S.density > 0.2 ? ks / (E.rey.rate ? 4 : 2) : 0;   // the reyong: half the kotekan, or a quarter
+  if (S.parts.ket && rs >= 1 && j % (GRID / rs) === 0) {
+    const jj = j / (GRID / rs), half = Math.max(1, Math.round(rs * turnAt(E.rey.turn)));
+    const rc = fold(C, 480 * Math.pow(2, E.rey.reg)), rn = near(N, rc);
+    const note = rs === 1 ? rc : jj < half ? rc + (jj % 2) : rn + ((jj - half) % 2);
+    if (!sparse(E.rey.sparse)) strike('reyong', 'reyong', pitch(note), t, 0.6 * lvl * rnd(0.85, 1.05), 0.35, sched.dur / rs * 1.8);
   }
-  if (S.parts.orn && S.density > 0.12) {
-    if (j === sub - 1 && sub > 1) strike('orn', 'gender', pitch(fold(N, 300)), t, 0.32 * lvl, 0.3);
-    if (j === 0) {
-      const g = fold(C, 150);
-      voice('gender', pitch(g), t + 0.004, 0.22 * lvl, 0.25, 'kot');
-      voice('gender', pitch(g + SC.n), t + 0.004, 0.22 * lvl, 0.35, 'kot');
+  if (S.parts.orn && S.density > 0.12) {   // the next note as a pickup (PICKUP: how early), the core in octaves on the beat
+    const lo = 150 * Math.pow(2, E.orn.reg), pick = GRID - Math.max(1, Math.round(GRID * (1 / 16 + E.orn.pickup * 7 / 16)));
+    if (j === pick && !sparse(E.orn.sparse)) strike('orn', 'gender', pitch(fold(N, lo * 2)), t, 0.32 * lvl, 0.3);
+    if (j === 0 && E.orn.oct > 0.01) {
+      const g = fold(C, lo), v = 0.22 * lvl * E.orn.oct * 2;
+      voice('gender', pitch(g), t + 0.004, v, 0.25, 'kot', { lk: 'orn' });
+      voice('gender', pitch(g + SC.n), t + 0.004, v, 0.35, 'kot', { lk: 'orn' });
     }
   }
 }
@@ -803,36 +879,37 @@ function elaborate(t, j, sub, C, N) {
 function start() {
   ensureAudio();
   if (S.running) { stop(); return; }
-  S.running = true; S.pos = 0; S.beatNo = 0; S.ending = null; S.endMul = 1; S.curBpm = S.targetBpm;
+  S.running = true; S.pos = 0; S.beatNo = 0; S.cycleNo = 0; S.ending = null; S.endMul = 1; S.curBpm = S.targetBpm;
   if (S.loop.state === 'play') S.loop.i = 0;
   sched.j = 0; sched.nextT = ctx.currentTime + 0.08;
   say(S.auto ? 'The cycle keeps it: the gong opens the cycle.' : 'By hand: the gongs are on 1-5.');
   refresh();
 }
 function stop() { S.running = false; S.ending = null; S.endMul = 1; say('Stopped.'); refresh(); }
-let playerVoice = null;
+let playerVoice = null, playerKey = -1;
+const heldWhite = new Set();   // white keys down: a note whose key is still held is not damped (two hands)
 function playWhite(k) {
   ensureAudio();
   const t = ctx.currentTime + 0.005, i = k + S.oct * SC.n;   // (OCT- and OCT+ move the keys an octave)
-  if (S.dampGender && playerVoice) damp(playerVoice, t + 0.1, 0.03 * Math.pow(16, S.timbre.gender.damp));
-  playerVoice = voice('gender', pitch(i), t, 0.9, 0, 'gender');
+  if (S.dampGender && playerVoice && !heldWhite.has(playerKey)) damp(playerVoice, t + 0.1, 0.03 * Math.pow(16, S.timbre.gender.damp));
+  playerVoice = voice('gender', pitch(i), t, 0.9, 0, 'gender', { live: true });
+  playerKey = k;
   if (S.loop.state !== 'play') {
     if (S.running) S.next = i; else S.C = i;
   }
   refresh();
 }
+// the black keys: what a press does (down), what letting go does (up: given the hold, if it became one), and
+// what the knobs play while it is held (hold)
 const BLACK = [
-  { id: 'gong', label: 'gong', cls: 'gongk', fn: () => hand('gong') },
-  { id: 'lanang', label: 'gong lanang', cls: 'gongk', fn: () => hand('lanang') },
-  { id: 'kempur', label: 'kempur', cls: 'gongk', fn: () => hand('kempur') },
-  { id: 'kemong', label: 'kemong', cls: 'gongk', fn: () => hand('kemong') },
-  { id: 'kajar', label: 'kajar', cls: 'gongk', fn: () => hand('kajar') },
-  { id: 'faster', label: 'faster', cls: 'cuek', fn: () => cueTempo(1.33) },
-  { id: 'slower', label: 'slower', cls: 'cuek', fn: () => cueTempo(1 / 1.33) },
-  { id: 'ending', label: 'ending', cls: 'cuek', fn: cueEnding },
-  { id: 'kot', label: 'kotekan', cls: 'ctlk', fn: () => togglePart('kot', 'The kotekan') },
-  { id: 'ket', label: 'reyong', cls: 'ctlk', fn: () => togglePart('ket', 'The reyong') },
-  { id: 'orn', label: 'orna­ments', cls: 'ctlk', fn: () => togglePart('orn', 'The gendèr ornaments') },
+  ...['gong', 'lanang', 'kempur', 'kemong', 'kajar'].map(k =>
+    ({ id: k, label: k === 'lanang' ? 'gong lanang' : k, cls: 'gongk', down: () => hand(k), hold: () => gongHold(k) })),
+  { id: 'faster', label: 'faster', cls: 'cuek', down: () => cueTempo(1 + S.cue.step), hold: () => cueHold(1) },
+  { id: 'slower', label: 'slower', cls: 'cuek', down: () => cueTempo(1 / (1 + S.cue.step)), hold: () => cueHold(-1) },
+  { id: 'ending', label: 'ending', cls: 'cuek', down: cueEnding, hold: endHold },
+  // the parts come in or go out when let go, unless their knobs were turned (shaping a part does not toggle it)
+  ...[['kot', 'kotekan', 'The kotekan'], ['ket', 'reyong', 'The reyong'], ['orn', 'orna­ments', 'The gendèr ornaments']].map(([id, label, name]) =>
+    ({ id, label, cls: 'ctlk', up: h => { if (!h || !h.moved) togglePart(id, name); }, hold: () => partHold(id) })),
 ];
 function togglePart(key, name) {   // black 9-11: the elaborating parts in and out
   S.parts[key] = !S.parts[key];
@@ -844,15 +921,18 @@ function hand(kind) {
   playGong(kind, t, kind === 'kajar' ? 0.9 : 1);
   if (S.running) hits.push({ pos: S.pos, t });
 }
+// the tempo reaches down to a core note every 20 seconds, for meditation: nothing may assume a beat comes soon
+const slowBpm = b => { b = clamp(b, 3, 96); return b < 20 ? Math.round(b * 10) / 10 : Math.round(b); };
+const tempoText = b => b < 12 ? `${(60 / b).toFixed(1)} S A BEAT` : `${Math.round(b)} BPM`;
 function cueTempo(f) {
-  S.targetBpm = clamp(Math.round(S.targetBpm * f), 18, 96);
+  S.targetBpm = slowBpm(S.targetBpm * f);
   $('tempo').value = S.targetBpm; refresh();
   say(f > 1 ? 'Faster: the ensemble pushes on.' : 'Slower: the ensemble settles.');
 }
 function cueEnding() {
   if (!S.running || S.ending) return;
-  S.ending = { beats: 0 };
-  say('Ending: slowing, closing on the next gong.');
+  S.ending = { beats: 0, gongs: 0 };
+  say(`Ending: slowing, closing on ${S.endCfg.after ? 'the gong after next' : 'the next gong'}.`);
 }
 function toggleCycle() {
   S.auto = !S.auto;
@@ -970,7 +1050,7 @@ const GAMELAN = [   // EDIT: the gamelan playing. SELECT picks the row, ALGO (or
   { label: 'TUNING', show: () => TUN[S.tuning].name, step: d => { S.tuning = cyc(TUNINGS.map(t => t.id), S.tuning, d); S.mode = 0; computeScale(); fillModes(); } },
   { label: 'MODE', show: () => TUN[S.tuning].modes ? TUN[S.tuning].modes[S.mode].name.toUpperCase() : 'NONE',
     step: d => { const m = TUN[S.tuning].modes; if (m) { S.mode = mod(S.mode + d, m.length); computeScale(); fillModes(); } } },
-  { label: 'CYCLE', show: () => S.cycleLen + ' BEATS', step: d => { S.cycleLen = cyc([8, 16, 32], S.cycleLen, d); S.pos %= S.cycleLen; $('cyc').value = S.cycleLen; } },
+  { label: 'CYCLE', show: () => S.cycleLen + ' BEATS', step: d => { S.cycleLen = cyc([4, 8, 16, 32], S.cycleLen, d); S.pos %= S.cycleLen; $('cyc').value = S.cycleLen; } },
   { label: 'THE GONGS', show: () => S.auto ? 'THE CYCLE' : 'BY HAND', step: () => S.auto = !S.auto },
   { label: 'CORE ON', show: () => S.coreInst === 'gender' ? 'GENDÈR' : 'JUBLAG', step: () => S.coreInst = S.coreInst === 'gender' ? 'jublag' : 'gender' },
   { label: 'KOTEKAN ON', show: () => S.kotInst === 'gender' ? 'GENDÈR' : 'GANGSA', step: () => S.kotInst = S.kotInst === 'gender' ? 'gangsa' : 'gender' },
@@ -987,9 +1067,105 @@ const LISTS = { edit: ['GAMELAN', GAMELAN], lfo: ['LIBRARY', LIBRARY], glo: ['SY
 const HINTS = { shape: 'SELECT: PAGE · ENV: NEXT', fx: 'SELECT: ROW · KNOBS: THE ROW', edit: 'SELECT: ROW · ALGO: CHANGE',
   lfo: 'SELECT: ROW · SEL: OPEN AT THE GONG', glo: 'SELECT: ROW' };
 
+// ---- the holds: while a key or FX is held, the four knobs (and ALGO) play something else, as in Penumbra.
+// A gong, a part or a cue: the change stays. A white key (bends) and FX (throws): let go and they drift back;
+// SAVE while holding FX keeps the throws. A hold shows after 0.3 s, so playing never flickers the strip ----
+const steps = (label, o, key, opts) => knob(label, () => opts.indexOf(o()[key]) / (opts.length - 1),
+  v => o()[key] = opts[Math.round(v * (opts.length - 1))], null);
+const PLACES_N = { gong: ['OFF', 'AS MADE', 'EVERY OTHER'], lanang: ['OFF', 'AT THE HALF', 'HALF, EVERY OTHER'],
+  kempur: ['OFF', 'AS MADE', 'EVERY OTHER'], kemong: ['OFF', 'AS MADE', 'EVERY OTHER'], kajar: ['OFF', 'EVERY BEAT', 'EVERY OTHER'] };
+function gongHold(k) {   // LEVEL, TONE (which tone it sounds), HUM, RING; ALGO: its places in the cycle
+  const g = () => S.gongs[k];
+  return { title: (k === 'lanang' ? 'GONG LANANG' : k.toUpperCase()), knobs: [
+    knob('LEVEL', () => g().level / 1.27, v => g().level = v * 1.27, () => pct(g().level)),
+    knob('TONE', () => (g().tone + 2) / 4, v => g().tone = Math.round(v * 4) - 2,
+      () => (g().tone ? (g().tone > 0 ? '+' : '') + g().tone + ' · ' : '') + noteName(gongIdx(k)).toUpperCase()),
+    asMade('HUM', g, 'hum'), asMade('RING', g, 'ring')],
+    algo: { label: 'PLACES', step: d => g().places = mod(g().places + d, 3), show: () => PLACES_N[k][g().places] } };
+}
+const REG = ['LOW', 'AS MADE', 'HIGH'];
+const regK = o => knob('REGISTER', () => (o().reg + 1) / 2, v => o().reg = Math.round(v * 2) - 1, () => REG[o().reg + 1]);
+const turnK = o => knob('TURN', () => o().turn, v => o().turn = v, () => Math.abs(o().turn - 0.5) < 0.01 ? 'HALFWAY' : pct(turnAt(o().turn)));
+function partHold(id) {
+  if (id === 'kot') {   // DENSITY (its own notes a beat), REGISTER, TURN, SPARSE
+    const o = () => S.elab.kot, D = [0, 2, 4, 8, 16];
+    const dens = steps('DENSITY', o, 'sub', D);
+    dens.show = () => o().sub ? `${o().sub} A BEAT` : 'AS HOME';
+    return { title: 'KOTEKAN', knobs: [dens, regK(o), turnK(o), share('SPARSE', o, 'sparse')], algo: lvlK('LEVEL', 'kot') };
+  }
+  if (id === 'ket') {   // RATE (half the kotekan, or a quarter), REGISTER, TURN, SPARSE
+    const o = () => S.elab.rey;
+    return { title: 'REYONG', knobs: [knob('RATE', () => o().rate, v => o().rate = Math.round(v), () => o().rate ? 'A QUARTER' : 'HALF'),
+      regK(o), turnK(o), share('SPARSE', o, 'sparse')], algo: lvlK('LEVEL', 'reyong') };
+  }
+  const o = () => S.elab.orn;   // PICKUP (how early the next note comes), OCTAVES (on the beat), REGISTER, SPARSE
+  return { title: 'ORNAMENTS', knobs: [
+    knob('PICKUP', () => o().pickup, v => o().pickup = v, () => `${Math.round((1 / 16 + o().pickup * 7 / 16) * 100)}% EARLY`),
+    asMade('OCTAVES', o, 'oct'), regK(o), share('SPARSE', o, 'sparse')], algo: lvlK('LEVEL', 'orn') };
+}
+function cueHold(dir) {   // held, the tempo keeps moving (a STEP every two seconds); GLIDE: how fast the ensemble follows
+  return { title: dir > 0 ? 'FASTER' : 'SLOWER', cue: dir, knobs: [
+    knob('STEP', () => (S.cue.step - 0.05) / 0.45, v => S.cue.step = 0.05 + v * 0.45, () => pct(S.cue.step)),
+    knob('GLIDE', () => S.cue.glide, v => S.cue.glide = Math.max(0.03, v), () => Math.abs(S.cue.glide - 0.3) < 0.01 ? 'AS MADE' : pct(S.cue.glide)),
+    null, null] };
+}
+function endHold() {   // AFTER (the next gong, or the one after), SLOWING, THINNING
+  const o = () => S.endCfg;
+  return { title: 'ENDING', knobs: [
+    knob('AFTER', () => o().after, v => o().after = Math.round(v), () => o().after ? 'GONG AFTER NEXT' : 'NEXT GONG'),
+    asMade('SLOWING', o, 'slowing'), asMade('THINNING', o, 'thinning'), null] };
+}
+function whiteHold(v, i) {   // bends, on the note held: SHIMMER (into the space), OMBAK (its own beat), PLACE, SWELL
+  const b = { shimmer: 0, ombak: 1 / 3, place: 0.5, swell: 0.625 };
+  const apply = tau => {
+    if (!v || !v.place) return;
+    const now = ctx.currentTime, beat = v.beat * b.ombak * 3;
+    v.send.gain.setTargetAtTime(b.shimmer * 1.5, now, tau);
+    v.place.pan.setTargetAtTime(b.place * 2 - 1, now, tau);
+    if (now < v.end) v.out.gain.setTargetAtTime(v.base * b.swell * 1.6, now, tau);
+    for (const { o, sgn, r } of v.oscs) o.frequency.setTargetAtTime((v.f + sgn * beat) * r, now, tau);
+  };
+  const k = (label, key, show) => knob(label, () => b[key], x => { b[key] = x; apply(0.05); }, show);
+  return { title: 'YOUR ' + noteName(i).toUpperCase(), bend: true, knobs: [
+    k('SHIMMER', 'shimmer', () => pct(b.shimmer)),
+    k('OMBAK', 'ombak', () => b.ombak < 0.01 ? 'STILL' : '×' + (b.ombak * 3).toFixed(1)),
+    k('PLACE', 'place', () => { const x = Math.round((b.place * 2 - 1) * 100); return x === 0 ? 'MIDDLE' : (x < 0 ? 'L ' : 'R ') + Math.abs(x) + '%'; }),
+    k('SWELL', 'swell', () => pct(b.swell * 1.6))],
+    onEnd: h => { if (h.moved) { Object.assign(b, { shimmer: 0, ombak: 1 / 3, place: 0.5, swell: 0.625 }); apply(0.6); } } };   // (drifting back)
+}
+function fxHold() {   // throws: SHIMMER, FREEZE (the space holds what it has), DIP (both ways), HUSH (the ensemble falls away); ALGO: OMBAK
+  const T_ = S.throws, k = (label, key, show) => knob(label, () => T_[key], x => { T_[key] = x; S.throwsKept = false; }, show || (() => pct(T_[key])));
+  return { title: 'THROWS', throws: true, knobs: [
+    k('SHIMMER', 'shimmer'), k('FREEZE', 'freeze'),
+    knob('DIP', () => (T_.dip + 1) / 2, x => { T_.dip = x * 2 - 1; S.throwsKept = false; },
+      () => Math.abs(T_.dip) < 0.02 ? 'OPEN' : (T_.dip < 0 ? 'LOW-PASS ' : 'HIGH-PASS ') + pct(Math.abs(T_.dip))),
+    k('HUSH', 'hush')],
+    algo: { label: 'OMBAK', step: d => { T_.ombak = clamp(T_.ombak + d * 0.05, -1, 1); S.throwsKept = false; },
+      show: () => '×' + Math.pow(4, T_.ombak).toFixed(2) } };
+}
+// the hold under way: pending at once, shown (active) after 0.3 s
+let holdTimer = 0;
+function holdStart(kind, idx, make) {
+  clearTimeout(holdTimer);
+  const h = { kind, idx, t0: performance.now(), moved: false, ...make() };
+  UI.pending = h; UI.hold = null;
+  holdTimer = setTimeout(() => { if (UI.pending === h) { UI.hold = h; syncKnobs(); } }, 300);
+  return h;
+}
+function holdEnd(kind, idx) {
+  const h = UI.pending;
+  if (!h || h.kind !== kind || h.idx !== idx) return null;
+  clearTimeout(holdTimer);
+  UI.pending = null;
+  if (UI.hold === h) UI.hold = null;
+  h.onEnd?.(h);
+  syncKnobs();
+  return h;
+}
+
 const UI = { view: 'home', shape: 0, fx: 0, rows: { edit: 0, lfo: 0, glo: 0 }, touched: 0 };
-const knobsNow = () => UI.view === 'home' ? MACROS : UI.view === 'shape' ? SHAPE[UI.shape].knobs : UI.view === 'fx' ? FXROWS[UI.fx].knobs : [];
-const algoNow = () => UI.view === 'shape' ? SHAPE[UI.shape].algo : null;
+const knobsNow = () => UI.hold ? UI.hold.knobs : UI.view === 'home' ? MACROS : UI.view === 'shape' ? SHAPE[UI.shape].knobs : UI.view === 'fx' ? FXROWS[UI.fx].knobs : [];
+const algoNow = () => UI.hold ? UI.hold.algo : UI.view === 'shape' ? SHAPE[UI.shape].algo : null;
 function syncKnobs() {
   const ks = knobsNow();
   for (let i = 0; i < 4; i++) {
@@ -1020,9 +1196,11 @@ function turn(enc, d) {
     else if (LISTS[UI.view]) UI.rows[UI.view] = mod(UI.rows[UI.view] + d, LISTS[UI.view][1].length);
   } else if (enc === 'PRESETS') pickGamelan(cyc(ENS_ORDER, S.pendEns ?? S.ens, d));
   else if (enc === 'ALGO') {
-    if (UI.view === 'shape') { const a = algoNow(); if (a) a.set(clamp(a.get() + d * 0.02, 0, 1)); }
+    const a = algoNow();
+    if (UI.hold) { if (a) { if (a.step) a.step(d); else a.set(clamp(a.get() + d * 0.02, 0, 1)); UI.hold.moved = true; } }
+    else if (UI.view === 'shape') { if (a) a.set(clamp(a.get() + d * 0.02, 0, 1)); }
     else if (UI.view === 'edit') GAMELAN[UI.rows.edit].step(d);
-    else { S.targetBpm = clamp(S.targetBpm + d, 18, 96); $('tempo').value = S.targetBpm; }
+    else { S.targetBpm = slowBpm(S.targetBpm * Math.pow(1.04, d)); $('tempo').value = S.targetBpm; }   // (in steps of 4%, so the slow end is as fine as the fast)
   }
   uiChanged();
 }
@@ -1043,7 +1221,10 @@ function button(b) {
     case 'REC': loopRec(); break;
     case 'PLAY': loopPlay(); break;
     case 'PLAY HELD': loopClear(); break;
-    case 'SAVE': say('SAVE: on the FM-1 everything is kept; the prototype keeps nothing between visits.'); break;
+    case 'SAVE':
+      if (UI.pending?.throws) { S.throwsKept = true; say('The throws stay out until you next hold FX and turn a knob.'); }
+      else say('SAVE: on the FM-1 everything is kept; the prototype keeps nothing between visits.');
+      break;
     case 'OCT-': case 'OCT+':
       S.oct = clamp(S.oct + (b === 'OCT+' ? 1 : -1), -1, 1);
       say(S.oct ? `White keys an octave ${S.oct > 0 ? 'up' : 'down'}.` : 'White keys where they were made.');
@@ -1216,12 +1397,16 @@ function drawScreen() {
   h2.setTransform(hv.width / 240, 0, 0, hv.width / 240, 0, 0);
   h2.fillStyle = '#070605'; h2.fillRect(0, 0, 240, 240);
   h2.textBaseline = 'alphabetic';
-  const v = UI.view, algo = algoNow();
-  const title = v === 'home' ? 'OMBAK' : v === 'shape' ? SHAPE[UI.shape].name : v === 'fx' ? 'FX · ' + FXROWS[UI.fx].name : LISTS[v][0];
+  const v = UI.view, algo = algoNow(), hold = UI.hold;
+  const title = hold ? hold.title : v === 'home' ? 'OMBAK' : v === 'shape' ? SHAPE[UI.shape].name : v === 'fx' ? 'FX · ' + FXROWS[UI.fx].name : LISTS[v][0];
   h2.font = '600 11px system-ui, sans-serif'; h2.fillStyle = '#d6a54e'; h2.textAlign = 'left'; h2.fillText(title, 8, 15);
   h2.font = '10px system-ui, sans-serif'; h2.fillStyle = '#a8998a'; h2.textAlign = 'right';
-  h2.fillText(algo ? `${algo.label} ${algo.show()}` : `${Math.round(S.running ? S.curBpm : S.targetBpm)} BPM`, 232, 15);
-  if (v === 'home') drawHomeMain(now);
+  h2.fillText(algo ? `${algo.label} ${algo.show()}` : tempoText(S.running ? S.curBpm : S.targetBpm), 232, 15);
+  if (hold) {   // a hold: its knobs as dials, and what letting go does
+    hold.knobs.forEach((p, i) => p && drawDial(i % 2 ? 175 : 65, i < 2 ? 70 : 145, 24, p));
+    h2.textAlign = 'center'; h2.font = '8px system-ui, sans-serif'; h2.fillStyle = '#6f6253';
+    h2.fillText(hold.bend ? 'HELD · LET GO: THE BENDS DRIFT BACK' : hold.throws ? 'HELD · LET GO: THEY DRIFT BACK · SAVE KEEPS' : 'HELD · THE CHANGE STAYS', 120, 206);
+  } else if (v === 'home') drawHomeMain(now);
   else {
     if (v === 'shape') drawShapeMain(SHAPE[UI.shape]);
     else if (v === 'fx') drawRows(FXROWS, UI.fx, true);
@@ -1243,16 +1428,24 @@ setHomeStyle('ongkara');
 // the mocked controls: encoders as arrows, the knobs as sliders, the buttons
 document.querySelectorAll('[data-enc]').forEach(b => b.addEventListener('click', () => { ensureAudio(); turn(b.dataset.enc, +b.dataset.d); }));
 let playDown = 0;
+function fxDown() { ensureAudio(); if (UI.pending?.kind !== 'fx') holdStart('fx', 0, fxHold); }
+function fxUp() {
+  const h = holdEnd('fx', 0);
+  if (h && !h.moved && performance.now() - h.t0 < 600) button('FX');   // (a press, not a hold: the FX page)
+}
 document.querySelectorAll('[data-btn]').forEach(b => {
   const name = b.dataset.btn;
   if (name === 'PLAY') {   // PLAY acts when let go: held, it clears the loop
     b.addEventListener('pointerdown', () => playDown = performance.now());
     b.addEventListener('pointerup', () => button(performance.now() - playDown > 600 ? 'PLAY HELD' : 'PLAY'));
+  } else if (name === 'FX') {   // FX: pressed, the page; held, the throws
+    b.addEventListener('pointerdown', fxDown);
+    b.addEventListener('pointerup', fxUp); b.addEventListener('pointerleave', fxUp);
   } else b.addEventListener('click', () => { if (name === 'SEQ') ensureAudio(); button(name); });
 });
 for (let i = 1; i <= 4; i++) $('k' + i).addEventListener('input', e => {
   const p = knobsNow()[i - 1];
-  if (p) { p.set(+e.target.value / 1000); UI.touched = performance.now(); refresh(); }
+  if (p) { p.set(+e.target.value / 1000); UI.touched = performance.now(); if (UI.hold) UI.hold.moved = true; refresh(); }
 });
 
 function draw() {
@@ -1328,13 +1521,23 @@ function labelKeys() {
   }
   BLACK.forEach((b, bi) => { if (b.cls === 'ctlk') $('b' + bi).classList.toggle('on', !!S.parts[b.id]); });
 }
-function press(kind, i) {
+function press(kind, i) {   // a key down: it plays, and becomes a hold (shown if it is still down in 0.3 s)
   $((kind === 'w' ? 'w' : 'b') + i)?.classList.add('lit');
-  if (kind === 'w') playWhite(i); else BLACK[i].fn();
+  if (kind === 'w') {
+    playWhite(i); heldWhite.add(i);
+    const v = playerVoice, n = i + S.oct * SC.n;
+    holdStart('w', i, () => whiteHold(v, n));
+  } else { ensureAudio(); BLACK[i].down?.(); holdStart('b', i, BLACK[i].hold); }
 }
-function release(kind, i) { $((kind === 'w' ? 'w' : 'b') + i)?.classList.remove('lit'); }
+function release(kind, i) {
+  const el = $((kind === 'w' ? 'w' : 'b') + i);
+  if (!el?.classList.contains('lit')) return;   // (a pointer leaving a key it never pressed)
+  el.classList.remove('lit');
+  if (kind === 'w') { heldWhite.delete(i); holdEnd('w', i); }
+  else { const h = holdEnd('b', i); BLACK[i].up?.(h); }
+}
 // the FM-1's buttons and encoders on the computer keyboard, as Penumbra's emulator has them
-const BTN_KEYS = { Space: 'SEQ', Enter: 'REC', Escape: 'HOME', KeyL: 'FX', KeyZ: 'OCT-', KeyX: 'OCT+', ShiftLeft: 'SEL', ShiftRight: 'SEL' };
+const BTN_KEYS = { Space: 'SEQ', Enter: 'REC', Escape: 'HOME', KeyZ: 'OCT-', KeyX: 'OCT+', ShiftLeft: 'SEL', ShiftRight: 'SEL' };
 const ENC_KEYS = { ArrowUp: ['SELECT', 1], ArrowDown: ['SELECT', -1], ArrowRight: ['ALGO', 1], ArrowLeft: ['ALGO', -1],
   BracketRight: ['PRESETS', 1], BracketLeft: ['PRESETS', -1] };
 document.addEventListener('keydown', e => {
@@ -1344,10 +1547,11 @@ document.addEventListener('keydown', e => {
     if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;   // (a focused control keeps its arrows)
     e.preventDefault(); ensureAudio(); turn(...ENC_KEYS[e.code]); return;
   }
-  if (BTN_KEYS[e.code] || e.code === 'KeyP') {
+  if (BTN_KEYS[e.code] || e.code === 'KeyP' || e.code === 'KeyL') {
     e.preventDefault();
     if (e.repeat) return;
     if (e.code === 'KeyP') { playDown = performance.now(); return; }   // (PLAY acts when let go)
+    if (e.code === 'KeyL') { fxDown(); return; }   // (FX: the page when let go soon, the throws while held)
     if (e.code === 'Space') ensureAudio();
     button(BTN_KEYS[e.code]); return;
   }
@@ -1358,6 +1562,7 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('keyup', e => {
   if (e.code === 'KeyP' && playDown) { button(performance.now() - playDown > 600 ? 'PLAY HELD' : 'PLAY'); playDown = 0; }
+  if (e.code === 'KeyL') fxUp();
   const wi = WHITE_CODES.indexOf(e.code), bi = BLACK_CODES.indexOf(e.code);
   if (wi >= 0) release('w', wi); if (bi >= 0) release('b', bi);
 });
@@ -1384,6 +1589,10 @@ function applyEnsemble(id) {
   const e = ENSEMBLES[id];
   Object.assign(S, { ens: id, tuning: e.tuning, mode: 0, cycleLen: e.cycle, auto: e.auto, coreInst: e.core, kotInst: e.kot,
     parts: { ...e.parts }, ombak: e.ombak, targetBpm: e.bpm, breath: e.breath / 100, density: e.density / 100 });
+  // (a gamelan also sets how long the bars ring and whether the kajar plays; STILL its deep space)
+  S.gongs.kajar.places = e.kajar ?? 1;
+  S.timbre.gender.ring = S.timbre.bars.ring = e.ring ?? 0.5;
+  if (e.space != null) S.space = e.space / 100;
   if (!S.running) S.curBpm = S.targetBpm;
   $('ombak').value = sliderFromOmbak(e.ombak); $('tempo').value = e.bpm; $('breath').value = e.breath; $('density').value = e.density;
   $('cyc').value = e.cycle;
@@ -1393,7 +1602,7 @@ function refresh() {
   $('tun').value = S.tuning;
   $('modeOut').textContent = TUN[S.tuning].modes ? TUN[S.tuning].modes[S.mode].name : '';
   $('ombakOut').textContent = `${S.ombak.toFixed(S.ombak < 1 ? 2 : 1)} Hz · ${ombakWord(S.ombak)}`;
-  $('tempoOut').textContent = S.targetBpm;
+  $('tempoOut').textContent = tempoText(S.targetBpm).toLowerCase();
   $('breathOut').textContent = S.breath < 0.05 ? 'steady' : S.breath < 0.5 ? 'breathing' : 'swelling, slowing';
   $('densityOut').textContent = S.density < 0.08 ? 'core only' : S.density < 0.55 ? 'a ripple' : 'flowing';
   $('spaceOut').textContent = Math.round(S.space * 100);
