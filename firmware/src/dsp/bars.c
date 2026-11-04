@@ -271,12 +271,18 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
             }
             v->glide *= v->gk;
         }
-        for (k = 0; k < v->nops; k++) {          /* the carriers still sounding (above -80 dB) */
+        for (k = 0; k < v->nops; k++) {          /* the carriers still sounding (above -80 dB); the rest are silent */
             bars_op_t *o = &v->op[k];
             if (o->amp + o->bamp > 1e-4f || o->att || o->batt)
                 act[na++] = o;
+            else
+                o->amp = o->bamp = 0.0f;         /* (not left at their last level: the voice could never end) */
             if (o->mi < 2e-4f)                   /* (a modulator that has fallen silent stops) */
                 o->mi = 0.0f;
+        }
+        if (!na && (!v->hum || v->op[v->nops].amp < 1e-4f)) {   /* nothing left to sound: the voice is free */
+            v->on = 0;
+            continue;
         }
         L = bus[v->part][0];
         R = bus[v->part][1];
@@ -353,7 +359,7 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
             lvl += v->op[k].amp + v->op[k].bamp + (float)(v->op[k].att != 0 || v->op[k].batt != 0) * v->op[k].a;
         if (v->hum)
             lvl += v->op[v->nops].amp;
-        lvl = lvl * v->gain + v->nz;
+        lvl = lvl * v->gain + (v->nz > 1e-5f ? v->nz : 0.0f);   /* (a mallet fallen silent no longer counts) */
         v->level = lvl;
         if (lvl < 1e-4f)                         /* (-80 dB: it has rung out) */
             v->on = 0;
