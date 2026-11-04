@@ -127,6 +127,23 @@ prototype's answers, for David to listen to and overrule; the firmware follows w
   - *ngubeng* / *ngembat* for the breathing knob: *ngubeng* is usually a static figuration around one tone,
     not a tempo, so the prototype says "breath" until the right words are found;
   - baro has several versions; the page uses one common one (3 4 5 7 1).
+- **Penumbra's movement, brought over (2026-11-04):**
+  - *The space* is Penumbra's reverb (`spacevb.c`), ported sample by sample: eight lines, damped, through a
+    Hadamard; the first four move (MOTION); the shimmer is two grains reading an octave up (or a fifth, a
+    twelfth), low-passed at 4.5 kHz and fed back through tanh, kept under unity as Penumbra keeps it. The
+    120 Hz low cut keeps the gongs' hum dry. The octave fits any tuning; a fifth or a twelfth (3:2, 3:1) is
+    not in slendro or pelog, so it colours the set. The SPACE knob is the send.
+  - *TIDES:* one slow swell (8 s to 4 min, EVEN to WANDERING), as Penumbra's. Here it reaches the space (the
+    send), the mallets' brightness (the FM index at each stroke), the ensemble's swell, and the ombak's own
+    rate: the wave breathes on the tide.
+  - *PAN and PAN 2:* each part on its own bus (your gendèr, core, kotekan, reyong, gongs) with a place and a
+    sway, on the tide or a rate of its own (60 s to 0.5 s), with OFFSET (in sync to mirrored). As made, your
+    gendèr sways 25% on the tide, the core sits a little left and the reyong right; polos and sangsih keep
+    their own spread inside the kotekan's place.
+  - Web Audio cannot build this reverb from its own nodes: Chrome's feedback between two or more delay nodes
+    gains energy (even two cross-coupled lines at 0.9 run away). So the network runs in an AudioWorklet where
+    the page is a secure context (localhost, and file:// in Chrome), else in a ScriptProcessor. In the
+    firmware, `spacevb.c` itself comes over, with its tables, and the tide and pan code from `engine.c`.
 - **Next for the prototype,** if David wants: the kendang's cues as sound (a stroke pattern before each
   change), real colotomic forms, a "free" mode with no beat, and the ombak knob reaching ringing notes.
 

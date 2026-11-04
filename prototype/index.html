@@ -58,6 +58,12 @@ button.on { background: #3a2e1b; border-color: var(--bronze); color: var(--bronz
 .bk.cuek { background: #23292e; }
 .bk.ctlk { background: #262331; }
 .kc { opacity: .6; font-size: .7rem; }
+.fxgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 16px; }
+.fxgrid .ctl { margin-bottom: 8px; }
+#field { width: 100%; display: block; margin-bottom: 6px; }
+.prow { display: grid; grid-template-columns: 92px 1fr 1fr; gap: 8px; align-items: center; font-size: .85rem; }
+.prow input { width: 100%; accent-color: var(--sky); }
+.prow.head { color: var(--muted); font-size: .78rem; }
 #about { margin: 16px auto 32px; }
 #about li { margin-bottom: 4px; }
 code { color: var(--bronze); }
@@ -115,6 +121,20 @@ kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-si
   </div>
 
   <div id="kbdWrap" class="panel"><div id="kbd" aria-label="FM-1 keyboard"></div></div>
+
+  <section class="panel fxgrid" aria-label="Space, tides and pan">
+    <div><h2>Space</h2><div id="fxSpace"></div>
+      <div class="ctl"><label for="rvInterval">Shimmer interval</label><select id="rvInterval">
+        <option value="0">an octave up</option><option value="1">a fifth up</option><option value="2">a twelfth up</option></select></div>
+      <p class="hint">Penumbra's reverb: eight moving lines with a shimmer in the loop. An octave fits any tuning; a
+      fifth or a twelfth is not in slendro or pelog, so it colours the set.</p></div>
+    <div><h2>Tides</h2><div id="fxTides"></div>
+      <p class="hint">One slow swell under everything, as in Penumbra: the space breathes, the mallets brighten,
+      the ensemble swells, the ombak quickens and slows.</p></div>
+    <div><h2>Pan</h2><canvas id="field" width="600" height="250"></canvas>
+      <div class="prow head"><span></span><span>place</span><span>sway</span></div>
+      <div id="panRows"></div><div id="fxPan"></div></div>
+  </section>
 
   <section id="about" class="panel">
     <h2>What you are hearing</h2>
@@ -263,7 +283,17 @@ const S = {
   parts: { core: true, kot: true, ket: false, orn: true }, dampGender: true,
   running: false, pos: 0, beatNo: 0, C: null, next: null, ending: null, endMul: 1,
   loop: { state: 'off', notes: [], len: 16, i: 0 },
+  // Penumbra's movement: its reverb, TIDES, PAN and PAN 2
+  rv: { decay: 0.5, size: 0.6, shimmer: 0.25, tone: 0.5, motion: 0.5, interval: 0 },
+  tide: { rate: 50, shape: 0.3, space: 0.4, bright: 0.3, swell: 0.25, ombak: 0.2 },
+  pan: { rate: 0, offset: 0, parts: { gender: [0, 0.25], core: [-0.15, 0], kot: [0, 0], reyong: [0.3, 0], gongs: [0, 0] } },
+  brightNow: 1, swellNow: 1, ombakNow: 4.5, panNow: {},
 };
+const PARTS = [
+  { id: 'gender', name: 'your gendèr' }, { id: 'core', name: 'core' }, { id: 'kot', name: 'kotekan' },
+  { id: 'reyong', name: 'reyong' }, { id: 'gongs', name: 'gongs' },
+];
+const SLOT_BUS = { core: 'core', jeg: 'core', polos: 'kot', sangsih: 'kot', orn: 'kot', reyong: 'reyong' };
 
 // ---- the scale in use: five (or four) tones an octave, key 0 = the mode's first tone ----
 let SC = null;
@@ -299,7 +329,8 @@ function near(i, ref) {   // the instance of tone i nearest to index ref
 const noteName = i => SC.names[mod(i, SC.n)];
 
 // ---- audio ----
-let ctx = null, master, dry, wet, comp, noiseBuf;
+let ctx = null, master, dry, send, comp, noiseBuf, RV = null;
+const BUS = {};   // each part's place in the field
 function ensureAudio() {
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
   ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
@@ -308,33 +339,213 @@ function ensureAudio() {
   master = ctx.createGain(); master.gain.value = S.vol;
   master.connect(comp); comp.connect(ctx.destination);
   dry = ctx.createGain(); dry.connect(master);
-  const conv = ctx.createConvolver(); conv.buffer = makeSpace(3.6);
-  wet = ctx.createGain(); wet.gain.value = S.space * 0.9;
-  dry.connect(conv); conv.connect(wet); wet.connect(master);
+  for (const p of PARTS) { const pn = ctx.createStereoPanner(); pn.pan.value = S.pan.parts[p.id][0]; pn.connect(dry); BUS[p.id] = pn; }
+  RV = makeReverb();
+  send = ctx.createGain(); send.gain.value = S.space * 0.9;
+  dry.connect(send); send.connect(RV.input); RV.output.connect(master);
+  setReverb();
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const nd = noiseBuf.getChannelData(0);
   for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
   setInterval(tick, 25);
+  setInterval(motion, 25);
+  motion();
 }
-function makeSpace(sec) {   // an open pavilion: a darkening, decaying stereo tail
-  const len = Math.floor(ctx.sampleRate * sec), pre = Math.floor(ctx.sampleRate * 0.015);
-  const b = ctx.createBuffer(2, len, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = b.getChannelData(ch); let y = 0;
-    for (let i = pre; i < len; i++) {
-      const tt = i / len;
-      y += (0.6 - 0.5 * tt) * ((Math.random() * 2 - 1) - y);
-      d[i] = y * Math.exp(-tt * 5) * (1 - tt);
+
+// ---- the space: Penumbra's reverb (spacevb.c), sample by sample, at the page's own rate. Eight lines,
+// damped, mixed by a Hadamard; the first four move (MOTION); a shimmer of two grains reading an octave
+// (or a fifth, a twelfth) up, crossfaded by sin^2, fed back into the lines through tanh. It runs in an
+// AudioWorklet where the page allows one, else in a ScriptProcessor (Web Audio's own feedback between
+// delay nodes is not reliable enough for a network like this) ----
+function SpaceVerbDSP(sr) {
+  const MS = [29.7, 37.1, 41.1, 43.7, 53.3, 59.9, 67.7, 73.1], N = 8;
+  const MODMAX = 7 * sr / 22050, WIN = Math.round(1024 * sr / 22050), PSLEN = 8192, CTRL = 16;
+  const cap = MS.map(ms => Math.ceil(ms * 1.5 * sr / 1000 + 2 * MODMAX + 4));
+  const buf = cap.map(c => new Float32Array(c)), w = new Int32Array(N);
+  const d = new Float32Array(N), dcur = new Float32Array(N), dmod = new Float32Array(N), g = new Float32Array(N);
+  const lp = new Float32Array(N), y = new Float32Array(N), ps = new Float32Array(PSLEN);
+  let t60 = 6, size = 1.1, shimmer = 0.2, mod = 0.5, dampC = 0.5, shimGain = 0, psInc = 1 / WIN, first = true;
+  let hpX = 0, hpY = 0, modPh = 0, psW = 0, psPh = 0, shOut = 0, ctrl = 0;
+  const hpC = Math.exp(-2 * Math.PI * 120 / sr);   // the send's low cut
+  const slew = 1 - Math.exp(-CTRL / (0.3 * sr));   // a new SIZE glides
+  // the shimmer feed's low-pass: Butterworth, 4.5 kHz, two biquads
+  const bq = [0.5412, 1.3066].map(q => {
+    const k = Math.tan(Math.PI * 4500 / sr), n = 1 / (1 + k / q + k * k);
+    return { b0: k * k * n, b1: 2 * k * k * n, a1: 2 * (k * k - 1) * n, a2: (1 - k / q + k * k) * n, z1: 0, z2: 0 };
+  });
+  function recompute() {
+    let gs = 0;
+    for (let j = 0; j < N; j++) {
+      d[j] = MS[j] * size * sr / 1000;
+      g[j] = Math.pow(10, -3 * d[j] / (t60 * sr));
+      gs += g[j];
+      if (first) dcur[j] = d[j];
     }
+    first = false;
+    // the tank sustains like 1 / (1 - g): this keeps the shimmer loop under unity
+    shimGain = shimmer * (1 - gs / N) * 4;
   }
-  return b;
+  this.set = p => {
+    if (p.decay != null) t60 = Math.pow(2, 5.32 * p.decay);
+    if (p.size != null) size = 0.5 + p.size;
+    if (p.shimmer != null) shimmer = 0.9 * p.shimmer;
+    if (p.motion != null) mod = p.motion;
+    if (p.tone != null) {   // Penumbra's one-pole, its cutoff kept at this rate
+      const c = Math.min(0.999, 0.05 + 0.95 * p.tone), fc = -Math.log(1 - c) * 22050 / (2 * Math.PI);
+      dampC = 1 - Math.exp(-2 * Math.PI * Math.min(fc, sr * 0.45) / sr);
+    }
+    if (p.interval != null) psInc = [1, 0.5, 2][p.interval] / WIN;   // the grains read faster by the interval less one
+    recompute();
+  };
+  const rd = (b, c, wp, dl) => {
+    let rp = wp - dl;
+    if (rp < 0) rp += c;
+    const i0 = rp | 0, fr = rp - i0, i1 = i0 + 1 >= c ? 0 : i0 + 1;
+    return b[i0] + (b[i1] - b[i0]) * fr;
+  };
+  const rdps = dl => {
+    let rp = psW - dl;
+    if (rp < 0) rp += PSLEN;
+    const i0 = rp | 0, fr = rp - i0;
+    return ps[i0] + (ps[(i0 + 1) & (PSLEN - 1)] - ps[i0]) * fr;
+  };
+  this.process = (inL, inR, outL, outR, n) => {
+    for (let i = 0; i < n; i++) {
+      if (ctrl-- <= 0) {   // the moving lines, at the control rate
+        ctrl = CTRL - 1;
+        modPh += 0.31 * CTRL / sr;
+        if (modPh >= 1) modPh -= 1;
+        const md = mod * MODMAX;
+        for (let j = 0; j < N; j++) {
+          dcur[j] += (d[j] - dcur[j]) * slew;
+          dmod[j] = dcur[j] + (j < 4 ? md * (1 + Math.sin(2 * Math.PI * (modPh + 0.27 * j))) : 0);
+        }
+      }
+      const x = (inL[i] + inR[i]) * 0.5;
+      hpY = hpC * (hpY + x - hpX); hpX = x;
+      const xin = hpY + Math.tanh(shOut * shimGain);
+      for (let j = 0; j < N; j++) { lp[j] += dampC * (rd(buf[j], cap[j], w[j], dmod[j]) - lp[j]); y[j] = lp[j]; }
+      const ol = (y[0] - y[2] + y[4] - y[6]) * 0.35, orr = (y[1] - y[3] + y[5] - y[7]) * 0.35;
+      for (let j = 0; j < N; j++) y[j] *= g[j];
+      for (let h = 1; h < N; h <<= 1)   // Hadamard: three butterfly stages
+        for (let a = 0; a < N; a += h << 1)
+          for (let b = a; b < a + h; b++) { const u = y[b], v = y[b + h]; y[b] = u + v; y[b + h] = u - v; }
+      for (let j = 0; j < N; j++) {
+        const s = y[j] * 0.35355339 + ((j & 1) ? -xin : xin);
+        buf[j][w[j]] = s > 8 ? 8 : s < -8 ? -8 : s;   // (a line can only hold so much, as Penumbra's int16)
+        if (++w[j] >= cap[j]) w[j] = 0;
+      }
+      let s = (ol + orr) * 0.5;
+      for (const f of bq) { const t = f.b0 * s + f.z1; f.z1 = f.b1 * s - f.a1 * t + f.z2; f.z2 = f.b0 * s - f.a2 * t; s = t; }
+      ps[psW] = s;
+      psPh += psInc;
+      if (psPh >= 1) psPh -= 1;
+      let ph1 = psPh + 0.5;
+      if (ph1 >= 1) ph1 -= 1;
+      let wv = Math.sin(Math.PI * psPh);
+      wv *= wv;
+      shOut = rdps((1 - psPh) * WIN + 2) * wv + rdps((1 - ph1) * WIN + 2) * (1 - wv);
+      psW = (psW + 1) & (PSLEN - 1);
+      outL[i] = ol; outR[i] = orr;
+    }
+    for (let j = 0; j < N; j++) if (Math.abs(lp[j]) < 1e-20) lp[j] = 0;
+  };
+  recompute();
+}
+function makeReverb() {
+  const R = { input: ctx.createGain(), output: ctx.createGain(), node: null, set: null };
+  R.output.gain.value = 0.8;
+  if (ctx.audioWorklet && window.isSecureContext) {
+    const src = `${SpaceVerbDSP.toString()}
+registerProcessor('ombak-space', class extends AudioWorkletProcessor {
+  constructor() { super(); this.v = new SpaceVerbDSP(sampleRate); this.port.onmessage = e => this.v.set(e.data); }
+  process(inputs, outputs) {
+    const i = inputs[0], o = outputs[0], n = o[0].length;
+    const l = i[0] || (this.z ||= new Float32Array(n)), r = i[1] || l;
+    this.v.process(l, r, o[0], o[1] || o[0], n);
+    return true;
+  }
+});`;
+    const url = URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+    ctx.audioWorklet.addModule(url).then(() => {
+      R.node = new AudioWorkletNode(ctx, 'ombak-space', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+      R.set = p => R.node.port.postMessage(p);
+      R.input.connect(R.node); R.node.connect(R.output);
+      setReverb();
+    }).catch(() => fallback());
+  } else fallback();
+  function fallback() {   // the main thread: a little more latency, the same network
+    const v = new SpaceVerbDSP(ctx.sampleRate);
+    R.node = ctx.createScriptProcessor(2048, 2, 2);
+    R.node.onaudioprocess = e => {
+      const ib = e.inputBuffer, ob = e.outputBuffer;
+      v.process(ib.getChannelData(0), ib.getChannelData(1), ob.getChannelData(0), ob.getChannelData(1), ob.length);
+    };
+    R.set = p => v.set(p);
+    R.input.connect(R.node); R.node.connect(R.output);
+    setReverb();
+  }
+  return R;
+}
+function setReverb() { if (RV && RV.set) RV.set({ ...S.rv }); }
+
+// ---- TIDES: an even sine and a wandering one (a new height every half tide, eased into), blended by
+// SHAPE, the same every time (a fixed seed); its past is kept so a part can follow it behind ----
+const T = { ph: 0, wph: 0, from: 0, to: 0, now: 0, rng: 0x7A1DE, total: 0, hist: [] };
+function tideRand() { T.rng = (Math.imul(T.rng, 1664525) + 1013904223) >>> 0; return (T.rng >>> 8) * (2 / 16777216) - 1; }
+function tideTick(dt) {
+  const inc = dt / S.tide.rate, w = S.tide.shape;
+  T.ph = (T.ph + inc) % 1;
+  T.wph += 2 * inc;
+  if (T.wph >= 1) { T.wph -= 1; T.from = T.to; T.to = tideRand(); }
+  const ease = 0.5 - 0.5 * Math.cos(Math.PI * T.wph);
+  T.now = (1 - w) * Math.sin(2 * Math.PI * T.ph) + w * (T.from + (T.to - T.from) * ease);
+  T.total += inc;
+  const h = T.hist;
+  if (!h.length || T.total - h[h.length - 1][0] >= 1 / 256) h.push([T.total, T.now]);
+  while (h.length && T.total - h[0][0] > 2) h.shift();
+}
+function tideAgo(lag) {   // the tide lag tides ago; before it began, the middle
+  if (lag <= 0) return T.now;
+  const target = T.total - lag, h = T.hist;
+  if (!h.length || target < h[0][0]) return 0;
+  let lo = 0, hi = h.length - 1;
+  if (target >= h[hi][0]) return h[hi][1] + (T.now - h[hi][1]) * (target - h[hi][0]) / Math.max(1e-9, T.total - h[hi][0]);
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (h[m][0] <= target) lo = m; else hi = m; }
+  return h[lo][1] + (h[hi][1] - h[lo][1]) * (target - h[lo][0]) / (h[hi][0] - h[lo][0]);
+}
+// PAN's RATE: 0 the sway on the tide, else a cycle of its own, 60 s .. 0.5 s, evenly in octaves
+const panSecs = v => 60 * Math.pow(0.5 / 60, (v - 1) / 99);
+let lastMotion = 0, swayPh = 0;
+function motion() {
+  const now = ctx.currentTime, dt = lastMotion ? Math.min(0.2, now - lastMotion) : 0, td = S.tide;
+  lastMotion = now;
+  tideTick(dt);
+  const tv = T.now;
+  S.brightNow = 1 + tv * td.bright * 0.6;
+  S.swellNow = 1 + tv * td.swell * 0.35;
+  S.ombakNow = S.ombak * (1 + tv * td.ombak * 0.5);
+  send.gain.setTargetAtTime(S.space * 0.9 * (1 + tv * td.space * 0.5), now, 0.05);
+  if (S.pan.rate) swayPh = (swayPh + dt / panSecs(S.pan.rate)) % 1;
+  // PAN 2: each swaying part follows the one before it, up to half a cycle behind (OFFSET)
+  let n = 0;
+  for (const p of PARTS) {
+    const [place, sway] = S.pan.parts[p.id];
+    let x = place;
+    if (sway > 0) {
+      const lag = n++ * S.pan.offset * 0.5;
+      x += sway * (S.pan.rate ? Math.sin(2 * Math.PI * (swayPh - lag)) : tideAgo(lag));
+    }
+    S.panNow[p.id] = x = clamp(x, -1, 1);
+    BUS[p.id].pan.setTargetAtTime(x, now, 0.06);
+  }
 }
 
 // one stroke of a pair: pengumbang (f - beat/2) and pengisep (f + beat/2), a little apart in space
-function voice(name, f, t, vel, pan = 0) {
+function voice(name, f, t, vel, pan = 0, bus) {
   const spec = INST[name];
-  const beat = S.ombak * (spec.ombak ?? 1);
-  const out = ctx.createGain(); out.gain.value = vel * spec.gain; out.connect(dry);
+  const beat = S.ombakNow * (spec.ombak ?? 1);   // the ombak, on the tide
+  const out = ctx.createGain(); out.gain.value = vel * spec.gain; out.connect(BUS[bus] || dry);
   const nodes = []; let end = t;
   for (const [sgn, side] of [[-0.5, -1], [0.5, 1]]) {
     const pn = ctx.createStereoPanner(); pn.pan.value = clamp(pan + side * spec.spread, -1, 1); pn.connect(out);
@@ -348,7 +559,7 @@ function voice(name, f, t, vel, pan = 0) {
       if (op.m) {
         const m = ctx.createOscillator(), mg = ctx.createGain(), mf = fr * op.m.r;
         m.frequency.setValueAtTime(mf, t);
-        mg.gain.setValueAtTime(op.m.i * mf, t); mg.gain.setTargetAtTime(0, t, op.m.d / 6.9);
+        mg.gain.setValueAtTime(op.m.i * S.brightNow * mf, t); mg.gain.setTargetAtTime(0, t, op.m.d / 6.9);
         m.connect(mg); mg.connect(o.frequency); m.start(t); nodes.push(m);
       }
       o.start(t); nodes.push(o); end = Math.max(end, t + att + op.d);
@@ -379,7 +590,7 @@ function damp(v, t, tau = 0.06) {
 const held = {};   // the last stroke of each damped part
 function strike(slot, name, f, t, vel, pan, dampAfter) {
   if (dampAfter != null) damp(held[slot], t + dampAfter);
-  const v = voice(name, f, t, vel, pan);
+  const v = voice(name, f, t, vel, pan, SLOT_BUS[slot]);
   held[slot] = v;
   return v;
 }
@@ -403,7 +614,7 @@ function gongHz(kind) {
 const hits = [];   // {pos, t} for the circle's flashes
 function playGong(kind, t, vel = 1) {
   const name = kind === 'lanang' ? 'gong' : kind;
-  voice(name, gongHz(kind), t, vel, kind === 'lanang' ? 0.15 : kind === 'gong' ? -0.1 : 0);
+  voice(name, gongHz(kind), t, vel, kind === 'lanang' ? 0.15 : kind === 'gong' ? -0.1 : 0, 'gongs');
 }
 
 // ---- the scheduler: a look-ahead clock, one beat = one core note, split into subdivisions ----
@@ -435,7 +646,7 @@ function beginBeat(t) {
   if (S.ending) { S.ending.beats++; S.endMul *= 1.09; }
   const p = (pos + 1) / L;
   sched.dur = 60 / S.curBpm * (1 + S.breath * 0.9 * Math.pow(p, 4)) * S.endMul;
-  sched.dyn = 1 + S.breath * 0.5 * Math.sin(Math.PI * p) - S.breath * 0.25;
+  sched.dyn = (1 + S.breath * 0.5 * Math.sin(Math.PI * p) - S.breath * 0.25) * S.swellNow;
   sched.fade = S.ending ? Math.max(0.25, 1 - S.ending.beats * 0.08) : 1;
   sched.sub = subdivisions();
 
@@ -506,8 +717,8 @@ function elaborate(t, j, sub, C, N) {
     if (j === sub - 1 && sub > 1) strike('orn', 'gender', pitch(fold(N, 300)), t, 0.32 * lvl, 0.3);
     if (j === 0) {
       const g = fold(C, 150);
-      voice('gender', pitch(g), t + 0.004, 0.22 * lvl, 0.25);
-      voice('gender', pitch(g + SC.n), t + 0.004, 0.22 * lvl, 0.35);
+      voice('gender', pitch(g), t + 0.004, 0.22 * lvl, 0.25, 'kot');
+      voice('gender', pitch(g + SC.n), t + 0.004, 0.22 * lvl, 0.35, 'kot');
     }
   }
 }
@@ -528,7 +739,7 @@ function playWhite(i) {
   ensureAudio();
   const t = ctx.currentTime + 0.005;
   if (S.dampGender && playerVoice) damp(playerVoice, t + 0.1, 0.12);
-  playerVoice = voice('gender', pitch(i), t, 0.9, 0);
+  playerVoice = voice('gender', pitch(i), t, 0.9, 0, 'gender');
   if (S.loop.state !== 'play') {
     if (S.running) S.next = i; else S.C = i;
   }
@@ -592,6 +803,7 @@ const cv = $('circle'), g2 = cv.getContext('2d');
 const COLORS = { gong: '#d6a54e', kemong: '#74bba4', kempur: '#d27c6c', kajar: '#8a7c6c' };
 function draw() {
   requestAnimationFrame(draw);
+  drawField();
   const W = cv.width, cx = W / 2, cy = W / 2, R = W * 0.4, L = S.cycleLen, now = ctx ? ctx.currentTime : 0;
   g2.clearRect(0, 0, W, W);
   g2.strokeStyle = '#3a3128'; g2.lineWidth = 3; g2.beginPath(); g2.arc(cx, cy, R, 0, Math.PI * 2); g2.stroke();
@@ -728,6 +940,77 @@ function refresh() {
   $('tunHint').textContent = `${t.name}: ${SC.cents.map(c => Math.round(c)).join(' · ')} cents from the first tone; white keys from ${SC.base.toFixed(1)} Hz.`;
   labelKeys();
 }
+// Space, Tides, Pan: [container, id, label, get (slider value), set, shown as]
+const pct = x => Math.round(x * 100) + '%';
+const fmtSecs = s => s >= 60 ? (s / 60).toFixed(1) + ' min' : s.toFixed(s < 10 ? 1 : 0) + ' s';
+const FX = [
+  ['fxSpace', 'rvDecay', 'Decay', () => S.rv.decay * 100, v => S.rv.decay = v / 100, () => fmtSecs(Math.pow(2, 5.32 * S.rv.decay))],
+  ['fxSpace', 'rvSize', 'Size', () => S.rv.size * 100, v => S.rv.size = v / 100, () => (0.5 + S.rv.size).toFixed(2) + '×'],
+  ['fxSpace', 'rvShimmer', 'Shimmer', () => S.rv.shimmer * 100, v => S.rv.shimmer = v / 100, () => pct(S.rv.shimmer)],
+  ['fxSpace', 'rvTone', 'Tone', () => S.rv.tone * 100, v => S.rv.tone = v / 100, () => pct(S.rv.tone)],
+  ['fxSpace', 'rvMotion', 'Motion', () => S.rv.motion * 100, v => S.rv.motion = v / 100, () => pct(S.rv.motion)],
+  ['fxTides', 'tdRate', 'Rate (a tide)', () => 20 * Math.log2(S.tide.rate / 8), v => S.tide.rate = 8 * Math.pow(2, v / 20), () => fmtSecs(S.tide.rate)],
+  ['fxTides', 'tdShape', 'Shape', () => S.tide.shape * 100, v => S.tide.shape = v / 100,
+    () => S.tide.shape < 0.05 ? 'even' : S.tide.shape > 0.95 ? 'wandering' : pct(S.tide.shape) + ' wandering'],
+  ['fxTides', 'tdSpace', 'Space (the send)', () => S.tide.space * 100, v => S.tide.space = v / 100, () => pct(S.tide.space)],
+  ['fxTides', 'tdBright', 'Bright (the mallets)', () => S.tide.bright * 100, v => S.tide.bright = v / 100, () => pct(S.tide.bright)],
+  ['fxTides', 'tdSwell', 'Swell (the ensemble)', () => S.tide.swell * 100, v => S.tide.swell = v / 100, () => pct(S.tide.swell)],
+  ['fxTides', 'tdOmbak', 'Ombak (its rate)', () => S.tide.ombak * 100, v => S.tide.ombak = v / 100, () => pct(S.tide.ombak)],
+  ['fxPan', 'pnRate', 'Sway rate', () => S.pan.rate, v => S.pan.rate = v, () => S.pan.rate ? fmtSecs(panSecs(S.pan.rate)) : 'on the tide'],
+  ['fxPan', 'pnOffset', 'Offset', () => S.pan.offset * 100, v => S.pan.offset = v / 100,
+    () => S.pan.offset < 0.02 ? 'in sync' : S.pan.offset > 0.98 ? 'mirrored' : pct(S.pan.offset)],
+];
+function buildFx() {
+  for (const [box, id, label, get, set] of FX) {
+    const d = document.createElement('div'); d.className = 'ctl';
+    d.innerHTML = `<label for="${id}">${label} <output id="${id}Out"></output></label><input id="${id}" type="range" min="0" max="100" step="1">`;
+    $(box).appendChild(d);
+    $(id).value = get();
+    $(id).addEventListener('input', e => { set(+e.target.value); setReverb(); refreshFx(); });
+  }
+  $('rvInterval').addEventListener('change', e => { S.rv.interval = +e.target.value; setReverb(); });
+  $('panRows').innerHTML = PARTS.map(p => `<div class="prow"><span>${p.name}</span>` +
+    `<input type="range" id="pp_${p.id}" min="-100" max="100" step="1" aria-label="${p.name}: place">` +
+    `<input type="range" id="ps_${p.id}" min="0" max="100" step="1" aria-label="${p.name}: sway"></div>`).join('');
+  for (const p of PARTS) {
+    const pp = $('pp_' + p.id), ps = $('ps_' + p.id), part = S.pan.parts[p.id];
+    pp.value = part[0] * 100; ps.value = part[1] * 100;
+    pp.addEventListener('input', () => part[0] = pp.value / 100);
+    pp.addEventListener('dblclick', () => { pp.value = 0; part[0] = 0; });   // back to the middle
+    ps.addEventListener('input', () => part[1] = ps.value / 100);
+  }
+  refreshFx();
+}
+function refreshFx() { for (const [, id, , , , show] of FX) $(id + 'Out').textContent = show(); }
+const fv = $('field'), f2 = fv.getContext('2d');
+function drawField() {   // the tide's last tide (newest on the right), and each part's lane
+  const W = fv.width, H = fv.height, top = 6, th = 50, mid = top + th / 2;
+  f2.clearRect(0, 0, W, H);
+  f2.font = '20px system-ui, sans-serif';
+  f2.strokeStyle = '#3a3128'; f2.lineWidth = 2;
+  f2.beginPath(); f2.moveTo(0, mid); f2.lineTo(W, mid); f2.stroke();
+  f2.strokeStyle = '#8fa9d8'; f2.lineWidth = 3; f2.beginPath();
+  let first = true;
+  for (const [tt, v] of T.hist) {
+    const age = T.total - tt;
+    if (age > 1) continue;
+    const x = W * (1 - age), y = mid - v * th / 2;
+    if (first) f2.moveTo(x, y); else f2.lineTo(x, y);
+    first = false;
+  }
+  f2.stroke();
+  f2.fillStyle = '#a8998a'; f2.fillText('tide', 6, top + 18);
+  const lane0 = top + th + 12, lh = (H - lane0) / PARTS.length, x0 = 150, X = v => x0 + (W - x0 - 20) * (v + 1) / 2;
+  PARTS.forEach((p, k) => {
+    const y = lane0 + lh * k + lh / 2, [place, sway] = S.pan.parts[p.id];
+    f2.globalAlpha = sway > 0 ? 1 : 0.5;
+    f2.strokeStyle = '#3a3128'; f2.lineWidth = 2; f2.beginPath(); f2.moveTo(x0, y); f2.lineTo(W - 20, y); f2.stroke();
+    f2.fillStyle = '#a8998a'; f2.fillText(p.name, 6, y + 7);
+    f2.fillStyle = '#5a4c3c'; f2.fillRect(X(place) - 2, y - 12, 4, 24);
+    f2.fillStyle = '#d6a54e'; f2.beginPath(); f2.arc(X(S.panNow[p.id] ?? place), y, 9, 0, Math.PI * 2); f2.fill();
+    f2.globalAlpha = 1;
+  });
+}
 function bindRange(id, f) { $(id).addEventListener('input', e => { f(+e.target.value); refresh(); }); }
 function init() {
   $('ens').innerHTML = '';
@@ -745,7 +1028,8 @@ function init() {
   bindRange('tempo', v => S.targetBpm = v);
   bindRange('breath', v => S.breath = v / 100);
   bindRange('density', v => S.density = v / 100);
-  bindRange('space', v => { S.space = v / 100; if (wet) wet.gain.setTargetAtTime(S.space * 0.9, ctx.currentTime, 0.05); });
+  bindRange('space', v => S.space = v / 100);   // (the send: motion() sets it, on the tide)
+  buildFx();
   bindRange('vol', v => { S.vol = v / 100; if (master) master.gain.setTargetAtTime(S.vol, ctx.currentTime, 0.05); });
   $('space').value = S.space * 100; $('vol').value = S.vol * 100;
   for (const [id, key] of [['pCore', 'core'], ['pKot', 'kot'], ['pKet', 'ket'], ['pOrn', 'orn']])
