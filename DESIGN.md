@@ -300,8 +300,8 @@ own ringing and the ombak fill that space.
 
 ## The firmware: 0.1 beta (2026-11-04), the first build to play
 
-`./build.sh --release 0.1` makes `build/ombak-0.1.fwsc` (identity `FM-1_74000100`: 74 is Ombak's own, to confirm
-free on thefirmwarehub.com before a release; Penumbra's is 73). It installs as Penumbra does (BUILDING.md).
+`./build.sh --release 0.1` makes `build/ombak-0.1.fwsc` (identity `FM-1_74000100`: 74 is Ombak's own, free on
+thefirmwarehub.com as David found on 2026-11-04; Penumbra's is 73). It installs as Penumbra does (BUILDING.md).
 
 **What it has:**
 - Penumbra's platform as is (boot, safe mode, update mode, USB, storage, the update path, the two cores, the

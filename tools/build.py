@@ -360,8 +360,8 @@ def main():
     name = "ombak.fwsc"
     if a.release:
         # identity FM-1_74 + major, minor, patch as two digits each (0.1 -> FM-1_74000100). FM-1 is the
-        # model the update tools match on; 74 is Ombak's (Penumbra's is 73; to confirm free on thefirmwarehub.com,
-        # which takes 3 to 8 digits). Digits only after the underscore, as the tools parse it.
+        # model the update tools match on; 74 is Ombak's (Penumbra's is 73; free on thefirmwarehub.com, as David
+        # found on 2026-11-04, which takes 3 to 8 digits). Digits only after the underscore, as the tools parse it.
         m = re.fullmatch(r"(\d{1,2})\.(\d{1,2})(?:\.(\d{1,2}))?(-[A-Za-z0-9]+)?", a.release)
         if not m:
             raise SystemExit(f"--release {a.release}: use X.Y[.Z][-suffix], up to two digits each")
