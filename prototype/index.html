@@ -63,6 +63,14 @@ button.on { background: #3a2e1b; border-color: var(--bronze); color: var(--bronz
 #homeWrap { margin-top: 16px; }
 #home { width: 360px; max-width: 100%; display: block; margin: 8px auto; border: 1px solid var(--line); border-radius: 6px; }
 #homeHint { text-align: center; max-width: 560px; margin: 0 auto; }
+.fm1 { max-width: 560px; margin: 0 auto 10px; display: grid; gap: 8px; }
+.fm1 .encs, .fm1 .btns { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; font-size: .82rem; }
+.fm1 .enc { display: inline-flex; gap: 4px; align-items: center; color: var(--muted); }
+.fm1 button { padding: 3px 8px; font-size: .82rem; }
+.knobs4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.knobs4 label { display: grid; font-size: .75rem; color: var(--muted); text-align: center; }
+.knobs4 input { width: 100%; accent-color: var(--bronze); }
+.bk.on { box-shadow: inset 0 -6px 0 var(--jade); }
 .fxgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 16px; }
 .fxgrid .ctl { margin-bottom: 8px; }
 #field { width: 100%; display: block; margin-bottom: 6px; }
@@ -80,7 +88,9 @@ kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-si
   <h1>Ombak <small>sound prototype · inspired by Balinese gamelan · for the M-VAVE FM-1</small></h1>
   <p class="muted">Press <kbd>Space</kbd> to start the cycle. Lead the core melody with <kbd>Q</kbd>…<kbd>I</kbd> <kbd>A</kbd>…<kbd>K</kbd>
   (the FM-1's 16 white keys); the ensemble heads for each note you play and lands on it at the next beat.
-  <kbd>1</kbd>…<kbd>0</kbd> <kbd>-</kbd> are the 11 black keys: gongs by hand, cues and switches. Headphones help: the gongs are low.</p>
+  <kbd>1</kbd>…<kbd>0</kbd> <kbd>-</kbd> are the 11 black keys: the gongs by hand, the cues, the elaborating parts in and out.
+  The FM-1's buttons and encoders are under its screen (HOME, below), and on the keyboard as in Penumbra's emulator.
+  Headphones help: the gongs are low.</p>
 </header>
 
 <main>
@@ -126,11 +136,34 @@ kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-si
   </div>
 
   <section class="panel" id="homeWrap" aria-label="HOME on the FM-1's screen">
-    <h2>HOME, on the FM-1's screen (240 × 240): a mock-up</h2>
+    <h2>The FM-1's screen (240 × 240) and controls: a mock-up</h2>
     <div class="row" style="justify-content: center">
       <button id="hOng" class="on">The Ongkara</button><button id="hGong">The gong</button>
     </div>
     <canvas id="home" width="480" height="480"></canvas>
+    <div class="fm1" aria-label="The FM-1's controls">
+      <div class="encs">
+        <span class="enc">SELECT <button data-enc="SELECT" data-d="-1" aria-label="SELECT left">◀</button><button data-enc="SELECT" data-d="1" aria-label="SELECT right">▶</button> <span class="kc">↓ ↑</span></span>
+        <span class="enc">PRESETS <button data-enc="PRESETS" data-d="-1" aria-label="PRESETS left">◀</button><button data-enc="PRESETS" data-d="1" aria-label="PRESETS right">▶</button> <span class="kc">[ ]</span></span>
+        <span class="enc">ALGO <button data-enc="ALGO" data-d="-1" aria-label="ALGO left">◀</button><button data-enc="ALGO" data-d="1" aria-label="ALGO right">▶</button> <span class="kc">← →</span></span>
+      </div>
+      <div class="knobs4">
+        <label><span id="k1L">K1</span><input type="range" id="k1" min="0" max="1000"></label>
+        <label><span id="k2L">K2</span><input type="range" id="k2" min="0" max="1000"></label>
+        <label><span id="k3L">K3</span><input type="range" id="k3" min="0" max="1000"></label>
+        <label><span id="k4L">K4</span><input type="range" id="k4" min="0" max="1000"></label>
+      </div>
+      <div class="btns">
+        <button data-btn="HOME">HOME <span class="kc">Esc</span></button><button data-btn="ENV">ENV</button><button data-btn="EDIT">EDIT</button>
+        <button data-btn="LFO">LFO</button><button data-btn="FX">FX <span class="kc">L</span></button><button data-btn="GLO">GLO</button>
+        <button data-btn="SEL">SEL <span class="kc">⇧</span></button>
+      </div>
+      <div class="btns">
+        <button data-btn="ARP">ARP</button><button data-btn="SEQ">SEQ <span class="kc">Space</span></button>
+        <button data-btn="REC">REC <span class="kc">⏎</span></button><button data-btn="PLAY">PLAY <span class="kc">P</span></button>
+        <button data-btn="SAVE">SAVE</button><button data-btn="OCT-">OCT− <span class="kc">Z</span></button><button data-btn="OCT+">OCT+ <span class="kc">X</span></button>
+      </div>
+    </div>
     <p class="hint" id="homeHint"></p>
   </section>
 
@@ -298,16 +331,26 @@ const S = {
   running: false, pos: 0, beatNo: 0, C: null, next: null, ending: null, endMul: 1,
   loop: { state: 'off', notes: [], len: 16, i: 0 },
   // Penumbra's movement: its reverb, TIDES, PAN and PAN 2
-  rv: { decay: 0.5, size: 0.6, shimmer: 0.25, tone: 0.5, motion: 0.5, interval: 0 },
-  tide: { rate: 50, shape: 0.3, space: 0.4, bright: 0.3, swell: 0.25, ombak: 0.2 },
-  pan: { rate: 0, offset: 0, parts: { gender: [0, 0.25], core: [-0.15, 0], kot: [0, 0], reyong: [0.3, 0], gongs: [0, 0] } },
+  rv: { decay: 0.5, size: 0.6, shimmer: 0.25, tone: 0.5, motion: 0.5, interval: 0, lowcut: 0.477, level: 1 },
+  tide: { rate: 50, shape: 0.3, space: 0.4, swell: 0.3, ombak: 0.2 },
+  pan: { rate: 0, offset: 0, parts: { gender: [0, 0.25], core: [-0.15, 0], kot: [0.1, 0], gongs: [0, 0] } },
   brightNow: 1, swellNow: 1, ombakNow: 4.5, panNow: {},
+  // SHAPE: each part's level (1: as made, up to 1.27), and each instrument family's timbre (0.5: as made)
+  lvl: { gender: 1, core: 1, kot: 1, reyong: 1, gongs: 1 },
+  timbre: {
+    gender: { bright: 0.5, ring: 0.5, bloom: 0.5, damp: 0.5 },
+    bars: { bright: 0.5, ring: 0.5, mallet: 0.5, bloom: 0.5 },
+    reyong: { bright: 0.5, ring: 0.5, mallet: 0.5 },
+    gongs: { hum: 0.5, swell: 0.5, body: 0.5, ombak: 0.5 },
+  },
+  oct: 0, pendMode: null, pendEns: null,   // (a new mode or gamelan waits for the gong)
 };
-const PARTS = [
-  { id: 'gender', name: 'your gendèr' }, { id: 'core', name: 'core' }, { id: 'kot', name: 'kotekan' },
-  { id: 'reyong', name: 'reyong' }, { id: 'gongs', name: 'gongs' },
+const PARTS = [   // the field's four places: the elaboration (kotekan, reyong, ornaments) moves as one
+  { id: 'gender', name: 'your gendèr', short: 'GENDÈR' }, { id: 'core', name: 'core', short: 'CORE' },
+  { id: 'kot', name: 'elaboration', short: 'KOTEKAN' }, { id: 'gongs', name: 'gongs', short: 'GONGS' },
 ];
-const SLOT_BUS = { core: 'core', jeg: 'core', polos: 'kot', sangsih: 'kot', orn: 'kot', reyong: 'reyong' };
+const SLOT_BUS = { core: 'core', jeg: 'core', polos: 'kot', sangsih: 'kot', orn: 'kot', reyong: 'kot' };
+const GROUP = { gender: 'gender', gangsa: 'bars', jublag: 'bars', jegogan: 'bars', reyong: 'reyong', gong: 'gongs', kempur: 'gongs', kemong: 'gongs', kajar: 'gongs' };
 
 // ---- the scale in use: five (or four) tones an octave, key 0 = the mode's first tone ----
 let SC = null;
@@ -381,7 +424,7 @@ function SpaceVerbDSP(sr) {
   const lp = new Float32Array(N), y = new Float32Array(N), ps = new Float32Array(PSLEN);
   let t60 = 6, size = 1.1, shimmer = 0.2, mod = 0.5, dampC = 0.5, shimGain = 0, psInc = 1 / WIN, first = true;
   let hpX = 0, hpY = 0, modPh = 0, psW = 0, psPh = 0, shOut = 0, ctrl = 0;
-  const hpC = Math.exp(-2 * Math.PI * 120 / sr);   // the send's low cut
+  let hpC = Math.exp(-2 * Math.PI * 120 / sr);   // the send's low cut
   const slew = 1 - Math.exp(-CTRL / (0.3 * sr));   // a new SIZE glides
   // the shimmer feed's low-pass: Butterworth, 4.5 kHz, two biquads
   const bq = [0.5412, 1.3066].map(q => {
@@ -410,6 +453,7 @@ function SpaceVerbDSP(sr) {
       dampC = 1 - Math.exp(-2 * Math.PI * Math.min(fc, sr * 0.45) / sr);
     }
     if (p.interval != null) psInc = [1, 0.5, 2][p.interval] / WIN;   // the grains read faster by the interval less one
+    if (p.lowcutHz != null) hpC = Math.exp(-2 * Math.PI * p.lowcutHz / sr);
     recompute();
   };
   const rd = (b, c, wp, dl) => {
@@ -502,7 +546,11 @@ registerProcessor('ombak-space', class extends AudioWorkletProcessor {
   }
   return R;
 }
-function setReverb() { if (RV && RV.set) RV.set({ ...S.rv }); }
+function setReverb() {
+  if (!RV) return;
+  RV.output.gain.setTargetAtTime(0.8 * S.rv.level, ctx.currentTime, 0.05);
+  if (RV.set) RV.set({ ...S.rv, lowcutHz: 40 * Math.pow(10, S.rv.lowcut) });   // (LOW CUT: 40 to 400 Hz)
+}
 
 // ---- TIDES: an even sine and a wandering one (a new height every half tide, eased into), blended by
 // SHAPE, the same every time (a fixed seed); its past is kept so a part can follow it behind ----
@@ -537,7 +585,7 @@ function motion() {
   lastMotion = now;
   tideTick(dt);
   const tv = T.now;
-  S.brightNow = 1 + tv * td.bright * 0.6;
+  S.brightNow = 1 + tv * td.swell * 0.6;   // (the ensemble swells as struck bronze does: louder and brighter)
   S.swellNow = 1 + tv * td.swell * 0.35;
   S.ombakNow = S.ombak * (1 + tv * td.ombak * 0.5);
   send.gain.setTargetAtTime(S.space * 0.9 * (1 + tv * td.space * 0.5), now, 0.05);
@@ -559,8 +607,13 @@ function motion() {
 // one stroke of a pair: pengumbang (f - beat/2) and pengisep (f + beat/2), a little apart in space
 function voice(name, f, t, vel, pan = 0, bus) {
   const spec = INST[name];
-  const beat = S.ombakNow * (spec.ombak ?? 1);   // the ombak, on the tide
-  const out = ctx.createGain(); out.gain.value = vel * spec.gain; out.connect(BUS[bus] || dry);
+  // SHAPE's timbre for this family (0.5: as made; x2 or /2 at the ends) and the part's level
+  const tm = S.timbre[GROUP[name]], gong = GROUP[name] === 'gongs', e2 = x => Math.pow(2, (x - 0.5) * 2);
+  const bright = gong ? 1 : e2(tm.bright), ring = gong ? 1 : e2(tm.ring);
+  const bloom = tm.bloom != null ? tm.bloom * 2 : 1, body = gong ? tm.body * 2 : 1, mallet = tm.mallet != null ? tm.mallet * 2 : 1;
+  const beat = S.ombakNow * (spec.ombak ?? 1) * (gong ? e2(tm.ombak) : 1);   // the ombak, on the tide
+  const out = ctx.createGain(); out.gain.value = vel * spec.gain * S.lvl[name === 'reyong' ? 'reyong' : bus || 'gender'];
+  out.connect(BUS[bus] || dry);
   const nodes = []; let end = t;
   for (const [sgn, side] of [[-0.5, -1], [0.5, 1]]) {
     const pn = ctx.createStereoPanner(); pn.pan.value = clamp(pan + side * spec.spread, -1, 1); pn.connect(out);
@@ -569,27 +622,29 @@ function voice(name, f, t, vel, pan = 0, bus) {
       const o = ctx.createOscillator(), g = ctx.createGain(), fr = ff * op.r, att = op.att ?? 0.003;
       if (spec.glide) { o.frequency.setValueAtTime(fr * (1 + spec.glide), t); o.frequency.exponentialRampToValueAtTime(fr, t + 0.4); }
       else o.frequency.setValueAtTime(fr, t);
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(op.a * 0.5, t + att); g.gain.setTargetAtTime(0, t + att, op.d / 6.9);
+      const a = op.a * (att >= 0.05 ? bloom : 1) * body, d = op.d * ring;   // (the slow-attack carriers are the resonators' bloom)
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a * 0.5, t + att); g.gain.setTargetAtTime(0, t + att, d / 6.9);
       o.connect(g); g.connect(pn);
       if (op.m) {
         const m = ctx.createOscillator(), mg = ctx.createGain(), mf = fr * op.m.r;
         m.frequency.setValueAtTime(mf, t);
-        mg.gain.setValueAtTime(op.m.i * S.brightNow * mf, t); mg.gain.setTargetAtTime(0, t, op.m.d / 6.9);
+        mg.gain.setValueAtTime(op.m.i * S.brightNow * bright * mf, t); mg.gain.setTargetAtTime(0, t, op.m.d / 6.9);
         m.connect(mg); mg.connect(o.frequency); m.start(t); nodes.push(m);
       }
-      o.start(t); nodes.push(o); end = Math.max(end, t + att + op.d);
+      o.start(t); nodes.push(o); end = Math.max(end, t + att + d);
     }
     if (spec.hum) {   // the gong's hum, swelling after the stroke
       const h = spec.hum, o = ctx.createOscillator(), g = ctx.createGain();
       o.frequency.value = ff;
-      g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(h.a * 0.5, t, h.rise / 2.5); g.gain.setTargetAtTime(0, t + h.rise, h.d / 6.9);
-      o.connect(g); g.connect(pn); o.start(t); nodes.push(o); end = Math.max(end, t + h.rise + h.d);
+      const ha = h.a * tm.hum * 2, hr = h.rise * e2(tm.swell);
+      g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(ha * 0.5, t, hr / 2.5); g.gain.setTargetAtTime(0, t + hr, h.d / 6.9);
+      o.connect(g); g.connect(pn); o.start(t); nodes.push(o); end = Math.max(end, t + hr + h.d);
     }
   }
   if (spec.noise) {   // the mallet
     const nz = spec.noise, src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
     src.buffer = noiseBuf; bp.type = 'bandpass'; bp.frequency.value = Math.min(16000, f * nz.fm); bp.Q.value = nz.q;
-    g.gain.setValueAtTime(nz.a, t); g.gain.setTargetAtTime(0, t, nz.d / 4);
+    g.gain.setValueAtTime(nz.a * mallet, t); g.gain.setTargetAtTime(0, t, nz.d / 4);
     src.connect(bp); bp.connect(g); g.connect(out); src.start(t, Math.random() * 0.5); src.stop(t + nz.d * 3 + 0.05);
   }
   for (const n of nodes) n.stop(end + 0.05);
@@ -648,6 +703,10 @@ function nextCore() {
 }
 
 function beginBeat(t) {
+  if (S.pos === 0 && (S.pendEns || S.pendMode != null)) {   // a new gamelan or mode arrives with the gong
+    if (S.pendEns) { const id = S.pendEns; S.pendEns = null; S.pendMode = null; applyEnsemble(id); $('ens').value = id; }
+    else { S.mode = S.pendMode; S.pendMode = null; computeScale(); fillModes(); refresh(); }
+  }
   const L = S.cycleLen, pos = S.pos;
   // the core note for this beat
   if (S.loop.state === 'play') { S.C = S.loop.notes[S.loop.i % S.loop.len]; S.loop.i++; }
@@ -655,7 +714,7 @@ function beginBeat(t) {
   if (S.loop.state === 'arm' && pos % S.loop.len === 0) { S.loop.state = 'rec'; S.loop.notes = []; }
   if (S.loop.state === 'rec') {
     S.loop.notes.push(S.C);
-    if (S.loop.notes.length >= S.loop.len) { S.loop.state = 'play'; S.loop.i = 0; say('Loop playing: the core is yours to elaborate over.'); }
+    if (S.loop.notes.length >= S.loop.len) { S.loop.state = 'play'; S.loop.i = 0; S.loop.kept = true; say('Loop playing: the core is yours to elaborate over.'); }
   }
   // tempo: glide toward the target, breathe across the cycle, slow for the ending
   S.curBpm += (S.targetBpm - S.curBpm) * 0.3;
@@ -728,7 +787,7 @@ function elaborate(t, j, sub, C, N) {
     const half = sub / 4, jj = j / 2;
     const rc = fold(C, 480), rn = near(N, rc);
     const note = jj < half ? rc + (jj % 2) : rn + ((jj - half) % 2);
-    strike('reyong', 'reyong', pitch(note), t, 0.6 * lvl * rnd(0.85, 1.05), 0.15, sched.dur / sub * 1.8);
+    strike('reyong', 'reyong', pitch(note), t, 0.6 * lvl * rnd(0.85, 1.05), 0.35, sched.dur / sub * 1.8);
   }
   if (S.parts.orn && S.density > 0.12) {
     if (j === sub - 1 && sub > 1) strike('orn', 'gender', pitch(fold(N, 300)), t, 0.32 * lvl, 0.3);
@@ -752,10 +811,10 @@ function start() {
 }
 function stop() { S.running = false; S.ending = null; S.endMul = 1; say('Stopped.'); refresh(); }
 let playerVoice = null;
-function playWhite(i) {
+function playWhite(k) {
   ensureAudio();
-  const t = ctx.currentTime + 0.005;
-  if (S.dampGender && playerVoice) damp(playerVoice, t + 0.1, 0.12);
+  const t = ctx.currentTime + 0.005, i = k + S.oct * SC.n;   // (OCT- and OCT+ move the keys an octave)
+  if (S.dampGender && playerVoice) damp(playerVoice, t + 0.1, 0.03 * Math.pow(16, S.timbre.gender.damp));
   playerVoice = voice('gender', pitch(i), t, 0.9, 0, 'gender');
   if (S.loop.state !== 'play') {
     if (S.running) S.next = i; else S.C = i;
@@ -771,10 +830,14 @@ const BLACK = [
   { id: 'faster', label: 'faster', cls: 'cuek', fn: () => cueTempo(1.33) },
   { id: 'slower', label: 'slower', cls: 'cuek', fn: () => cueTempo(1 / 1.33) },
   { id: 'ending', label: 'ending', cls: 'cuek', fn: cueEnding },
-  { id: 'cycle', label: 'cycle / hand', cls: 'ctlk', fn: toggleCycle },
-  { id: 'mode', label: 'next mode', cls: 'ctlk', fn: nextMode },
-  { id: 'loop', label: 'loop', cls: 'ctlk', fn: toggleLoop },
+  { id: 'kot', label: 'kotekan', cls: 'ctlk', fn: () => togglePart('kot', 'The kotekan') },
+  { id: 'ket', label: 'reyong', cls: 'ctlk', fn: () => togglePart('ket', 'The reyong') },
+  { id: 'orn', label: 'orna­ments', cls: 'ctlk', fn: () => togglePart('orn', 'The gendèr ornaments') },
 ];
+function togglePart(key, name) {   // black 9-11: the elaborating parts in and out
+  S.parts[key] = !S.parts[key];
+  say(`${name} ${S.parts[key] ? 'come in' : 'go out'}.`); refresh();
+}
 function hand(kind) {
   ensureAudio();
   const t = ctx.currentTime + 0.005;
@@ -795,22 +858,23 @@ function toggleCycle() {
   S.auto = !S.auto;
   say(S.auto ? 'The cycle keeps it.' : 'By hand: strike the gongs on 1-5.'); refresh();
 }
-function nextMode() {
-  const t = TUN[S.tuning];
-  if (!t.modes) {   // no modes here: move to the next tuning of the same kind
-    const fam = TUNINGS.filter(x => x.fam === t.fam);
-    S.tuning = fam[(fam.indexOf(t) + 1) % fam.length].id; S.mode = 0;
-  } else S.mode = (S.mode + 1) % t.modes.length;
-  computeScale(); fillModes(); refresh();
-  say(TUN[S.tuning].modes ? 'Mode: ' + TUN[S.tuning].modes[S.mode].name : 'Tuning: ' + TUN[S.tuning].name);
-}
-function toggleLoop() {
+// the looper. REC: record the core over the next cycle from its start (8 or 16 beats; REC again cancels).
+// PLAY: hold the loop (you lead again) or bring it back. PLAY held: clear it
+function loopRec() {
   const lp = S.loop;
   lp.len = Math.min(16, S.cycleLen);
-  if (lp.state === 'off') { lp.state = 'arm'; say(`Loop: recording the next ${lp.len} core beats from the cycle's start.`); }
-  else { lp.state = 'off'; say('Loop off: you lead the core again.'); }
+  if (lp.state === 'arm' || lp.state === 'rec') { lp.state = lp.kept ? 'held' : 'off'; say('Recording cancelled.'); }
+  else { lp.state = 'arm'; say(`Loop: recording the next ${lp.len} core beats from the cycle's start.`); }
   refresh();
 }
+function loopPlay() {
+  const lp = S.loop;
+  if (lp.state === 'play') { lp.state = 'held'; say('Loop held: you lead the core again.'); }
+  else if (lp.state === 'held') { lp.state = 'play'; lp.i = S.pos % lp.len; say('The loop plays the core.'); }
+  else if (lp.state === 'off') say('No loop yet: REC records one.');
+  refresh();
+}
+function loopClear() { Object.assign(S.loop, { state: 'off', notes: [], kept: false }); say('Loop cleared.'); refresh(); }
 
 // ---- view ----
 const $ = id => document.getElementById(id);
@@ -818,7 +882,8 @@ let sayTimer = 0;
 function say(s) { $('status').textContent = s; clearTimeout(sayTimer); sayTimer = setTimeout(() => $('status').textContent = '', 5000); }
 const cv = $('circle'), g2 = cv.getContext('2d');
 const COLORS = { gong: '#d6a54e', kemong: '#74bba4', kempur: '#d27c6c', kajar: '#8a7c6c' };
-// ---- HOME: a mock-up of the FM-1's 240x240 screen, the gong or the Ongkara at its heart ----
+// ---- the FM-1's screen and controls, mocked: HOME (the Ongkara, or the gong) and the pages behind it.
+// Three bands, as Penumbra's: the header (the page, the tempo or ALGO's value), the main band, the knob strip ----
 const hv = $('home'), h2 = hv.getContext('2d'), beads = [];   // beads: {pos, t} each core note, lit on the rim
 let homeStyle = 'ongkara';
 const HOME_HINT = {
@@ -853,18 +918,203 @@ function followSwell(now) {
   settled += (level - settled) * (1 - Math.exp(-dt / 4));
   swell = clamp(0.35 * level + 1.2 * (level - settled), 0, 1);
 }
-function drawHome() {
-  const now = ctx ? ctx.currentTime : 0, cx = 120, cy = 100, R = 66, L = S.cycleLen, tide = T.now;
-  followSwell(now);
-  h2.setTransform(hv.width / 240, 0, 0, hv.width / 240, 0, 0);
-  h2.fillStyle = '#070605'; h2.fillRect(0, 0, 240, 240);
-  h2.textBaseline = 'alphabetic';
-  // the header: the name, the tempo
-  h2.font = '600 11px system-ui, sans-serif'; h2.fillStyle = '#d6a54e'; h2.textAlign = 'left'; h2.fillText('OMBAK', 8, 15);
-  h2.font = '10px system-ui, sans-serif'; h2.fillStyle = '#a8998a'; h2.textAlign = 'right';
-  h2.fillText(`${Math.round(S.running ? S.curBpm : S.targetBpm)} BPM`, 232, 15);
-  // the tide: a halo that widens and narrows
-  const halo = R + 16 + tide * 7;
+
+// what the controls play, page by page. A knob is {label, get, set, show}, get and set in 0..1
+const knob = (label, get, set, show) => ({ label, get, set, show });
+const share = (label, o, key) => knob(label, () => o()[key], v => o()[key] = v, () => pct(o()[key]));
+const asMade = (label, o, key) => knob(label, () => o()[key], v => o()[key] = v, () => {
+  const x = Math.round((o()[key] - 0.5) * 200);
+  return x === 0 ? 'AS MADE' : (x > 0 ? '+' : '') + x + '%';
+});
+const lvlK = (label, key) => knob(label, () => S.lvl[key] / 1.27, v => S.lvl[key] = v * 1.27, () => pct(S.lvl[key]));
+const placeK = p => knob(p.short, () => (S.pan.parts[p.id][0] + 1) / 2, v => S.pan.parts[p.id][0] = v * 2 - 1, () => {
+  const x = Math.round(S.pan.parts[p.id][0] * 100);
+  return x === 0 ? 'MIDDLE' : (x < 0 ? 'L ' : 'R ') + Math.abs(x) + '%';
+});
+const swayK = p => knob(p.short, () => S.pan.parts[p.id][1], v => S.pan.parts[p.id][1] = v,
+  () => S.pan.parts[p.id][1] < 0.01 ? 'STILL' : pct(S.pan.parts[p.id][1]));
+const rvK = (label, key, show) => knob(label, () => S.rv[key], v => { S.rv[key] = v; setReverb(); }, show || (() => pct(S.rv[key])));
+const tb = g => () => S.timbre[g];
+
+const MACROS = [   // HOME's four
+  knob('OMBAK', () => sliderFromOmbak(S.ombak) / 100, v => S.ombak = ombakFromSlider(v * 100), () => S.ombak.toFixed(1) + ' HZ'),
+  share('DENSITY', () => S, 'density'), share('SPACE', () => S, 'space'), share('BREATH', () => S, 'breath'),
+];
+const SHAPE = [   // ENV: the sound, a page at a time; ALGO, each page's level (as Penumbra's)
+  { name: 'ENSEMBLE', knobs: [lvlK('CORE', 'core'), lvlK('KOTEKAN', 'kot'), lvlK('REYONG', 'reyong'), lvlK('GONGS', 'gongs')], algo: lvlK('GENDÈR', 'gender') },
+  { name: 'GENDÈR', knobs: [asMade('BRIGHT', tb('gender'), 'bright'), asMade('RING', tb('gender'), 'ring'), asMade('BLOOM', tb('gender'), 'bloom'), asMade('DAMP', tb('gender'), 'damp')], algo: lvlK('LEVEL', 'gender') },
+  { name: 'BARS', knobs: [asMade('BRIGHT', tb('bars'), 'bright'), asMade('RING', tb('bars'), 'ring'), asMade('MALLET', tb('bars'), 'mallet'), asMade('BLOOM', tb('bars'), 'bloom')], algo: lvlK('CORE', 'core') },
+  { name: 'REYONG', knobs: [asMade('BRIGHT', tb('reyong'), 'bright'), asMade('RING', tb('reyong'), 'ring'), asMade('MALLET', tb('reyong'), 'mallet'), null], algo: lvlK('LEVEL', 'reyong') },
+  { name: 'GONGS', knobs: [asMade('HUM', tb('gongs'), 'hum'), asMade('SWELL', tb('gongs'), 'swell'), asMade('BODY', tb('gongs'), 'body'), asMade('OMBAK', tb('gongs'), 'ombak')], algo: lvlK('LEVEL', 'gongs') },
+  { name: 'TIDES', kind: 'tide', knobs: [
+    knob('RATE', () => Math.log2(S.tide.rate / 8) / 5, v => S.tide.rate = 8 * Math.pow(2, v * 5), () => fmtSecs(S.tide.rate).toUpperCase()),
+    share('SPACE', () => S.tide, 'space'), share('SWELL', () => S.tide, 'swell'), share('OMBAK', () => S.tide, 'ombak')],
+    algo: knob('SHAPE', () => S.tide.shape, v => S.tide.shape = v, () => S.tide.shape < 0.05 ? 'EVEN' : S.tide.shape > 0.95 ? 'WANDERING' : pct(S.tide.shape)) },
+  { name: 'PAN', kind: 'pan', knobs: PARTS.map(placeK),
+    algo: knob('RATE', () => S.pan.rate / 100, v => S.pan.rate = Math.round(v * 100), () => S.pan.rate ? fmtSecs(panSecs(S.pan.rate)).toUpperCase() : 'THE TIDE') },
+  { name: 'PAN 2', kind: 'pan', knobs: PARTS.map(swayK),
+    algo: knob('OFFSET', () => S.pan.offset, v => S.pan.offset = v, () => S.pan.offset < 0.02 ? 'IN SYNC' : S.pan.offset > 0.98 ? 'MIRRORED' : pct(S.pan.offset)) },
+];
+const FXROWS = [   // FX: SELECT picks the row, the knobs change it
+  { name: 'SPACE', knobs: [rvK('DECAY', 'decay', () => fmtSecs(Math.pow(2, 5.32 * S.rv.decay)).toUpperCase()),
+    rvK('SIZE', 'size', () => (0.5 + S.rv.size).toFixed(2) + '×'), rvK('SHIMMER', 'shimmer'), rvK('TONE', 'tone')] },
+  { name: 'SPACE 2', knobs: [rvK('MOTION', 'motion'),
+    knob('INTERVAL', () => S.rv.interval / 2, v => { S.rv.interval = Math.round(v * 2); setReverb(); $('rvInterval').value = S.rv.interval; },
+      () => ['OCTAVE', 'FIFTH', 'TWELFTH'][S.rv.interval]),
+    rvK('LOW CUT', 'lowcut', () => Math.round(40 * Math.pow(10, S.rv.lowcut)) + ' HZ'),
+    knob('LEVEL', () => S.rv.level / 1.27, v => { S.rv.level = v * 1.27; setReverb(); }, () => pct(S.rv.level))] },
+];
+const ENS_ORDER = Object.keys(ENSEMBLES);
+const cyc = (arr, cur, d) => arr[mod(arr.indexOf(cur) + d, arr.length)];
+const GAMELAN = [   // EDIT: the gamelan playing. SELECT picks the row, ALGO (or SEL) changes it
+  { label: 'TUNING', show: () => TUN[S.tuning].name, step: d => { S.tuning = cyc(TUNINGS.map(t => t.id), S.tuning, d); S.mode = 0; computeScale(); fillModes(); } },
+  { label: 'MODE', show: () => TUN[S.tuning].modes ? TUN[S.tuning].modes[S.mode].name.toUpperCase() : 'NONE',
+    step: d => { const m = TUN[S.tuning].modes; if (m) { S.mode = mod(S.mode + d, m.length); computeScale(); fillModes(); } } },
+  { label: 'CYCLE', show: () => S.cycleLen + ' BEATS', step: d => { S.cycleLen = cyc([8, 16, 32], S.cycleLen, d); S.pos %= S.cycleLen; $('cyc').value = S.cycleLen; } },
+  { label: 'THE GONGS', show: () => S.auto ? 'THE CYCLE' : 'BY HAND', step: () => S.auto = !S.auto },
+  { label: 'CORE ON', show: () => S.coreInst === 'gender' ? 'GENDÈR' : 'JUBLAG', step: () => S.coreInst = S.coreInst === 'gender' ? 'jublag' : 'gender' },
+  { label: 'KOTEKAN ON', show: () => S.kotInst === 'gender' ? 'GENDÈR' : 'GANGSA', step: () => S.kotInst = S.kotInst === 'gender' ? 'gangsa' : 'gender' },
+  { label: 'REYONG', show: () => S.parts.ket ? 'IN' : 'OUT', step: () => S.parts.ket = !S.parts.ket },
+  { label: 'ORNAMENTS', show: () => S.parts.orn ? 'IN' : 'OUT', step: () => S.parts.orn = !S.parts.orn },
+];
+const LIBRARY = [   // LFO: the gamelan to play; SEL opens one, arriving at the next gong
+  ...ENS_ORDER.map(id => ({ label: ENSEMBLES[id].name.toUpperCase(), show: () => S.ens === id ? 'PLAYING' : S.pendEns === id ? 'AT THE GONG' : '', open: () => pickGamelan(id) })),
+  ...[1, 2, 3, 4].map(i => ({ label: 'USER ' + i, show: () => 'EMPTY' })),
+];
+const SYSTEM = [['MIDI CHANNEL', '1'], ['MIDI CLOCK OUT', 'OFF'], ['FOLLOW CLOCK IN', 'OFF'], ['OUTPUT LEVEL', 'NORMAL'],
+  ['PLAY AT POWER-ON', 'OFF'], ['SLEEP', 'OFF'], ['ABOUT', 'PROTOTYPE']].map(([label, v]) => ({ label, show: () => v }));
+const LISTS = { edit: ['GAMELAN', GAMELAN], lfo: ['LIBRARY', LIBRARY], glo: ['SYSTEM', SYSTEM] };
+const HINTS = { shape: 'SELECT: PAGE · ENV: NEXT', fx: 'SELECT: ROW · KNOBS: THE ROW', edit: 'SELECT: ROW · ALGO: CHANGE',
+  lfo: 'SELECT: ROW · SEL: OPEN AT THE GONG', glo: 'SELECT: ROW' };
+
+const UI = { view: 'home', shape: 0, fx: 0, rows: { edit: 0, lfo: 0, glo: 0 }, touched: 0 };
+const knobsNow = () => UI.view === 'home' ? MACROS : UI.view === 'shape' ? SHAPE[UI.shape].knobs : UI.view === 'fx' ? FXROWS[UI.fx].knobs : [];
+const algoNow = () => UI.view === 'shape' ? SHAPE[UI.shape].algo : null;
+function syncKnobs() {
+  const ks = knobsNow();
+  for (let i = 0; i < 4; i++) {
+    const el = $('k' + (i + 1)), p = ks[i];
+    el.disabled = !p; $('k' + (i + 1) + 'L').textContent = p ? p.label : '—';
+    if (p && document.activeElement !== el) el.value = Math.round(p.get() * 1000);
+  }
+}
+function uiChanged() { UI.touched = performance.now(); refresh(); syncKnobs(); }
+function turnMode(d) {   // on HOME, SELECT walks the modes; the new one arrives with the gong
+  const t = TUN[S.tuning];
+  if (!t.modes) { say('This tuning has no modes: PRESETS or EDIT change the tuning.'); return; }
+  const m = mod((S.pendMode ?? S.mode) + d, t.modes.length);
+  if (!S.running) { S.mode = m; S.pendMode = null; computeScale(); fillModes(); return; }
+  S.pendMode = m === S.mode ? null : m;
+  say(S.pendMode == null ? `Staying in ${t.modes[S.mode].name}.` : `${t.modes[m].name} at the next gong.`);
+}
+function pickGamelan(id) {
+  if (!S.running) { applyEnsemble(id); $('ens').value = id; S.pendEns = null; return; }
+  S.pendEns = id === S.ens ? null : id;
+  say(S.pendEns ? `${ENSEMBLES[id].name} at the next gong.` : `Staying with ${ENSEMBLES[S.ens].name}.`);
+}
+function turn(enc, d) {
+  if (enc === 'SELECT') {
+    if (UI.view === 'home') turnMode(d);
+    else if (UI.view === 'shape') UI.shape = mod(UI.shape + d, SHAPE.length);
+    else if (UI.view === 'fx') UI.fx = mod(UI.fx + d, FXROWS.length);
+    else if (LISTS[UI.view]) UI.rows[UI.view] = mod(UI.rows[UI.view] + d, LISTS[UI.view][1].length);
+  } else if (enc === 'PRESETS') pickGamelan(cyc(ENS_ORDER, S.pendEns ?? S.ens, d));
+  else if (enc === 'ALGO') {
+    if (UI.view === 'shape') { const a = algoNow(); if (a) a.set(clamp(a.get() + d * 0.02, 0, 1)); }
+    else if (UI.view === 'edit') GAMELAN[UI.rows.edit].step(d);
+    else { S.targetBpm = clamp(S.targetBpm + d, 18, 96); $('tempo').value = S.targetBpm; }
+  }
+  uiChanged();
+}
+function button(b) {
+  switch (b) {
+    case 'HOME': UI.view = 'home'; break;
+    case 'ENV': if (UI.view === 'shape') UI.shape = (UI.shape + 1) % SHAPE.length; UI.view = 'shape'; break;
+    case 'FX': if (UI.view === 'fx') UI.fx = (UI.fx + 1) % FXROWS.length; UI.view = 'fx'; break;
+    case 'EDIT': UI.view = 'edit'; break;
+    case 'LFO': UI.view = 'lfo'; break;
+    case 'GLO': UI.view = 'glo'; break;
+    case 'SEL':
+      if (UI.view === 'lfo') LIBRARY[UI.rows.lfo].open?.();
+      else if (UI.view === 'edit') GAMELAN[UI.rows.edit].step(1);
+      break;
+    case 'ARP': toggleCycle(); break;
+    case 'SEQ': start(); break;
+    case 'REC': loopRec(); break;
+    case 'PLAY': loopPlay(); break;
+    case 'PLAY HELD': loopClear(); break;
+    case 'SAVE': say('SAVE: on the FM-1 everything is kept; the prototype keeps nothing between visits.'); break;
+    case 'OCT-': case 'OCT+':
+      S.oct = clamp(S.oct + (b === 'OCT+' ? 1 : -1), -1, 1);
+      say(S.oct ? `White keys an octave ${S.oct > 0 ? 'up' : 'down'}.` : 'White keys where they were made.');
+      break;
+  }
+  uiChanged();
+}
+
+function drawStrip(ks) {   // the knob strip: what K1-K4 play here
+  h2.textAlign = 'center';
+  ks.forEach((p, i) => {
+    if (!p) return;
+    const x = 30 + i * 60;
+    h2.font = '8px system-ui, sans-serif'; h2.fillStyle = '#a8998a'; h2.fillText(fitText(p.label, 58), x, 222);
+    h2.font = '600 10px system-ui, sans-serif'; h2.fillStyle = '#d6a54e'; h2.fillText(fitText(p.show(), 58), x, 234);
+  });
+}
+function drawDial(x, y, r, p) {
+  const a0 = Math.PI * 0.75, a1 = a0 + Math.PI * 1.5 * p.get();
+  h2.lineCap = 'round';
+  h2.strokeStyle = '#3a3128'; h2.lineWidth = 5; h2.beginPath(); h2.arc(x, y, r, a0, Math.PI * 2.25); h2.stroke();
+  h2.strokeStyle = '#d6a54e'; h2.beginPath(); h2.arc(x, y, r, a0, Math.max(a0 + 0.01, a1)); h2.stroke();
+  h2.lineCap = 'butt'; h2.textAlign = 'center';
+  h2.font = '600 9px system-ui, sans-serif'; h2.fillStyle = '#f0e7d8'; h2.fillText(fitText(p.show(), 2 * r + 14), x, y + 3);
+  h2.font = '8px system-ui, sans-serif'; h2.fillStyle = '#a8998a'; h2.fillText(p.label, x, y + r + 13);
+}
+function drawShapeMain(pg) {
+  if (pg.kind === 'tide') {   // the tide's last tide, newest on the right
+    const top = 40, th = 110, mid = top + th / 2;
+    h2.strokeStyle = '#3a3128'; h2.lineWidth = 1; h2.beginPath(); h2.moveTo(10, mid); h2.lineTo(230, mid); h2.stroke();
+    h2.strokeStyle = '#8fa9d8'; h2.lineWidth = 2; h2.beginPath();
+    let first = true;
+    for (const [tt, v] of T.hist) {
+      const age = T.total - tt;
+      if (age > 1) continue;
+      const x = 10 + 220 * (1 - age), y = mid - v * th / 2;
+      if (first) h2.moveTo(x, y); else h2.lineTo(x, y);
+      first = false;
+    }
+    h2.stroke();
+    h2.fillStyle = '#f0e7d8'; h2.beginPath(); h2.arc(230, mid - T.now * th / 2, 3.5, 0, Math.PI * 2); h2.fill();
+  } else if (pg.kind === 'pan') {   // each part's lane, where its place and its sway have taken it
+    PARTS.forEach((p, k) => {
+      const y = 50 + k * 34, [place, sway] = S.pan.parts[p.id], X = v => 70 + 150 * (v + 1) / 2;
+      h2.globalAlpha = pg.name === 'PAN 2' && sway <= 0 ? 0.45 : 1;
+      h2.textAlign = 'left'; h2.font = '8px system-ui, sans-serif'; h2.fillStyle = '#a8998a'; h2.fillText(p.short, 8, y + 3);
+      h2.strokeStyle = '#3a3128'; h2.lineWidth = 2; h2.beginPath(); h2.moveTo(70, y); h2.lineTo(220, y); h2.stroke();
+      h2.fillStyle = '#5a4c3c'; h2.fillRect(X(place) - 1, y - 7, 2, 14);
+      h2.fillStyle = '#d6a54e'; h2.beginPath(); h2.arc(X(S.panNow[p.id] ?? place), y, 5, 0, Math.PI * 2); h2.fill();
+      h2.globalAlpha = 1;
+    });
+  } else pg.knobs.forEach((p, i) => p && drawDial(i % 2 ? 175 : 65, i < 2 ? 70 : 145, 24, p));
+  h2.textAlign = 'center';   // the pages, as dots
+  SHAPE.forEach((_, i) => { h2.fillStyle = i === UI.shape ? '#d6a54e' : '#3a3128'; h2.beginPath(); h2.arc(120 + (i - (SHAPE.length - 1) / 2) * 10, 192, 2.5, 0, Math.PI * 2); h2.fill(); });
+}
+function drawRows(rows, sel, two) {   // a list: the row SELECT is on, lit
+  const rh = two ? 34 : 20, top = 28;
+  rows.forEach((r, i) => {
+    const y = top + i * rh;
+    if (y + rh > 200) return;
+    if (i === sel) { h2.fillStyle = '#3a2e1b'; h2.fillRect(4, y, 232, rh - 2); }
+    h2.textAlign = 'left'; h2.font = '600 9px system-ui, sans-serif'; h2.fillStyle = i === sel ? '#d6a54e' : '#f0e7d8';
+    h2.fillText(r.label ?? r.name, 10, y + 13);
+    h2.font = '9px system-ui, sans-serif'; h2.fillStyle = '#a8998a';
+    if (two) { h2.fillText(fitText(r.knobs.map(k => k.show()).join(' · '), 220), 10, y + 26); }
+    else { h2.textAlign = 'right'; h2.fillText(fitText(r.show(), 120), 230, y + 13); }
+  });
+}
+function drawHomeMain(now) {
+  const cx = 120, cy = 100, R = 66, L = S.cycleLen, tide = T.now;
+  const halo = R + 16 + tide * 7;   // the tide: a halo that widens and narrows
   let gr = h2.createRadialGradient(cx, cy, R * 0.7, cx, cy, halo);
   gr.addColorStop(0, `rgba(214,165,78,${0.13 + 0.07 * tide})`); gr.addColorStop(1, 'rgba(214,165,78,0)');
   h2.fillStyle = gr; h2.beginPath(); h2.arc(cx, cy, halo, 0, Math.PI * 2); h2.fill();
@@ -876,8 +1126,7 @@ function drawHome() {
     h2.fillStyle = gr; h2.beginPath(); h2.arc(cx, cy, R, 0, Math.PI * 2); h2.fill();
     h2.strokeStyle = '#80603a'; h2.lineWidth = 3; h2.stroke();
     h2.strokeStyle = '#3d2b1a'; h2.lineWidth = 1.5; h2.beginPath(); h2.arc(cx, cy, R * 0.6, 0, Math.PI * 2); h2.stroke();
-    // the boss (pencon): its glow is the sound
-    h2.save();
+    h2.save();   // the boss (pencon): its glow is the sound
     h2.shadowColor = `rgba(255,196,110,${Math.min(1, glow)})`; h2.shadowBlur = 8 + 26 * glow;
     gr = h2.createRadialGradient(cx - 6, cy - 7, 2, cx, cy, 22);
     gr.addColorStop(0, `rgba(255,${200 + 40 * Math.min(1, glow)},${130 + 60 * Math.min(1, glow)},1)`);
@@ -950,19 +1199,37 @@ function drawHome() {
   gr = h2.createRadialGradient(lx, ly, 0, lx, ly, 10);
   gr.addColorStop(0, 'rgba(255,240,200,.95)'); gr.addColorStop(1, 'rgba(240,200,120,0)');
   h2.fillStyle = gr; h2.beginPath(); h2.arc(lx, ly, 10, 0, Math.PI * 2); h2.fill();
-  // under it: the tuning and mode, the state, HOME's four knobs
+  // under it: the mode and tuning (and what arrives at the gong), the state
   const t = TUN[S.tuning], mode = t.modes ? t.modes[S.mode].name : t.fam;
   h2.textAlign = 'center'; h2.font = '600 10px system-ui, sans-serif'; h2.fillStyle = '#f0e7d8';
-  h2.fillText(fitText(`${mode.toUpperCase()} · ${t.name}`, 224), 120, 193);
+  const pend = S.pendEns ? ` → ${ENSEMBLES[S.pendEns].name.toUpperCase()}` : S.pendMode != null ? ` → ${t.modes[S.pendMode].name.toUpperCase()}` : '';
+  h2.fillText(fitText(`${mode.toUpperCase()}${pend} · ${t.name}`, 224), 120, 193);
   h2.font = '9px system-ui, sans-serif'; h2.fillStyle = '#74bba4';
-  const lp = { off: '', arm: ' · LOOP WAITS', rec: ' · LOOP REC', play: ' · LOOP' }[S.loop.state];
-  h2.fillText(`${S.running ? (S.ending ? 'ENDING' : 'PLAYING') : 'STOPPED'} · ${S.auto ? 'CYCLE' : 'BY HAND'} ${L}${lp}`, 120, 206);
-  const knobs = [['OMBAK', S.ombak.toFixed(1)], ['DENSITY', pct(S.density)], ['SPACE', pct(S.space)], ['BREATH', pct(S.breath)]];
-  knobs.forEach(([k, v], i) => {
-    const x = 30 + i * 60;
-    h2.font = '8px system-ui, sans-serif'; h2.fillStyle = '#a8998a'; h2.fillText(k, x, 222);
-    h2.font = '600 10px system-ui, sans-serif'; h2.fillStyle = '#d6a54e'; h2.fillText(v, x, 234);
-  });
+  const lp = { off: '', arm: ' · LOOP WAITS', rec: ' · LOOP REC', play: ' · LOOP', held: ' · LOOP HELD' }[S.loop.state];
+  const oct = S.oct ? ` · OCT ${S.oct > 0 ? '+' : ''}${S.oct}` : '';
+  h2.fillText(`${S.running ? (S.ending ? 'ENDING' : 'PLAYING') : 'STOPPED'} · ${S.auto ? 'CYCLE' : 'BY HAND'} ${L}${lp}${oct}`, 120, 206);
+}
+function drawScreen() {
+  const now = ctx ? ctx.currentTime : 0;
+  followSwell(now);
+  if (UI.view !== 'home' && performance.now() - UI.touched > 30000) { UI.view = 'home'; syncKnobs(); }   // back HOME, untouched
+  h2.setTransform(hv.width / 240, 0, 0, hv.width / 240, 0, 0);
+  h2.fillStyle = '#070605'; h2.fillRect(0, 0, 240, 240);
+  h2.textBaseline = 'alphabetic';
+  const v = UI.view, algo = algoNow();
+  const title = v === 'home' ? 'OMBAK' : v === 'shape' ? SHAPE[UI.shape].name : v === 'fx' ? 'FX · ' + FXROWS[UI.fx].name : LISTS[v][0];
+  h2.font = '600 11px system-ui, sans-serif'; h2.fillStyle = '#d6a54e'; h2.textAlign = 'left'; h2.fillText(title, 8, 15);
+  h2.font = '10px system-ui, sans-serif'; h2.fillStyle = '#a8998a'; h2.textAlign = 'right';
+  h2.fillText(algo ? `${algo.label} ${algo.show()}` : `${Math.round(S.running ? S.curBpm : S.targetBpm)} BPM`, 232, 15);
+  if (v === 'home') drawHomeMain(now);
+  else {
+    if (v === 'shape') drawShapeMain(SHAPE[UI.shape]);
+    else if (v === 'fx') drawRows(FXROWS, UI.fx, true);
+    else drawRows(LISTS[v][1], UI.rows[v], false);
+    h2.textAlign = 'center'; h2.font = '8px system-ui, sans-serif'; h2.fillStyle = '#6f6253'; h2.fillText(HINTS[v], 120, 206);
+  }
+  h2.strokeStyle = '#2a231b'; h2.lineWidth = 1; h2.beginPath(); h2.moveTo(0, 211.5); h2.lineTo(240, 211.5); h2.stroke();
+  drawStrip(knobsNow());
 }
 function setHomeStyle(s) {
   homeStyle = s;
@@ -973,11 +1240,25 @@ function setHomeStyle(s) {
 $('hGong').addEventListener('click', () => setHomeStyle('gong'));
 $('hOng').addEventListener('click', () => setHomeStyle('ongkara'));
 setHomeStyle('ongkara');
+// the mocked controls: encoders as arrows, the knobs as sliders, the buttons
+document.querySelectorAll('[data-enc]').forEach(b => b.addEventListener('click', () => { ensureAudio(); turn(b.dataset.enc, +b.dataset.d); }));
+let playDown = 0;
+document.querySelectorAll('[data-btn]').forEach(b => {
+  const name = b.dataset.btn;
+  if (name === 'PLAY') {   // PLAY acts when let go: held, it clears the loop
+    b.addEventListener('pointerdown', () => playDown = performance.now());
+    b.addEventListener('pointerup', () => button(performance.now() - playDown > 600 ? 'PLAY HELD' : 'PLAY'));
+  } else b.addEventListener('click', () => { if (name === 'SEQ') ensureAudio(); button(name); });
+});
+for (let i = 1; i <= 4; i++) $('k' + i).addEventListener('input', e => {
+  const p = knobsNow()[i - 1];
+  if (p) { p.set(+e.target.value / 1000); UI.touched = performance.now(); refresh(); }
+});
 
 function draw() {
   requestAnimationFrame(draw);
   drawField();
-  drawHome();
+  drawScreen();
   const W = cv.width, cx = W / 2, cy = W / 2, R = W * 0.4, L = S.cycleLen, now = ctx ? ctx.currentTime : 0;
   g2.clearRect(0, 0, W, W);
   g2.strokeStyle = '#3a3128'; g2.lineWidth = 3; g2.beginPath(); g2.arc(cx, cy, R, 0, Math.PI * 2); g2.stroke();
@@ -1008,8 +1289,9 @@ function draw() {
   if ($('coreNow').textContent !== nowTxt) $('coreNow').textContent = nowTxt;
   const nx = N != null && N !== S.C ? '→ ' + noteName(N) : '';
   if ($('coreNext').textContent !== nx) $('coreNext').textContent = nx;
-  document.querySelectorAll('.wk.next').forEach(k => { if (+k.dataset.i !== S.next) k.classList.remove('next'); });
-  if (S.next != null) $('w' + S.next)?.classList.add('next');
+  const nk = S.next == null ? null : S.next - S.oct * SC.n;   // (the key that sets the next core note)
+  document.querySelectorAll('.wk.next').forEach(k => { if (+k.dataset.i !== nk) k.classList.remove('next'); });
+  if (nk != null) $('w' + nk)?.classList.add('next');
 }
 
 const WHITE_CODES = [...'QWERTYUI', ...'ASDFGHJK'].map(c => 'Key' + c);
@@ -1038,28 +1320,44 @@ function buildKeyboard() {
   });
 }
 function labelKeys() {
-  for (let i = 0; i < 16; i++) {
-    const d = $('w' + i);
+  for (let k = 0; k < 16; k++) {
+    const d = $('w' + k), i = k + S.oct * SC.n;
     d.querySelector('.nm').textContent = noteName(i);
-    d.querySelector('.oc').textContent = '·'.repeat(Math.floor(i / SC.n) + 1);
+    d.querySelector('.oc').textContent = '·'.repeat(Math.floor(i / SC.n) + 2);
     d.title = `${noteName(i)}, ${pitch(i).toFixed(1)} Hz`;
   }
+  BLACK.forEach((b, bi) => { if (b.cls === 'ctlk') $('b' + bi).classList.toggle('on', !!S.parts[b.id]); });
 }
 function press(kind, i) {
   $((kind === 'w' ? 'w' : 'b') + i)?.classList.add('lit');
   if (kind === 'w') playWhite(i); else BLACK[i].fn();
 }
 function release(kind, i) { $((kind === 'w' ? 'w' : 'b') + i)?.classList.remove('lit'); }
+// the FM-1's buttons and encoders on the computer keyboard, as Penumbra's emulator has them
+const BTN_KEYS = { Space: 'SEQ', Enter: 'REC', Escape: 'HOME', KeyL: 'FX', KeyZ: 'OCT-', KeyX: 'OCT+', ShiftLeft: 'SEL', ShiftRight: 'SEL' };
+const ENC_KEYS = { ArrowUp: ['SELECT', 1], ArrowDown: ['SELECT', -1], ArrowRight: ['ALGO', 1], ArrowLeft: ['ALGO', -1],
+  BracketRight: ['PRESETS', 1], BracketLeft: ['PRESETS', -1] };
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const wi = WHITE_CODES.indexOf(e.code), bi = BLACK_CODES.indexOf(e.code);
-  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) start(); return; }
+  if (ENC_KEYS[e.code]) {
+    if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;   // (a focused control keeps its arrows)
+    e.preventDefault(); ensureAudio(); turn(...ENC_KEYS[e.code]); return;
+  }
+  if (BTN_KEYS[e.code] || e.code === 'KeyP') {
+    e.preventDefault();
+    if (e.repeat) return;
+    if (e.code === 'KeyP') { playDown = performance.now(); return; }   // (PLAY acts when let go)
+    if (e.code === 'Space') ensureAudio();
+    button(BTN_KEYS[e.code]); return;
+  }
   if (wi < 0 && bi < 0) return;
   e.preventDefault();
   if (e.repeat) return;
   if (wi >= 0) press('w', wi); else press('b', bi);
 });
 document.addEventListener('keyup', e => {
+  if (e.code === 'KeyP' && playDown) { button(performance.now() - playDown > 600 ? 'PLAY HELD' : 'PLAY'); playDown = 0; }
   const wi = WHITE_CODES.indexOf(e.code), bi = BLACK_CODES.indexOf(e.code);
   if (wi >= 0) release('w', wi); if (bi >= 0) release('b', bi);
 });
@@ -1107,7 +1405,11 @@ function refresh() {
   $('bCycle').firstChild.textContent = S.auto ? 'The cycle keeps it ' : 'By hand ';
   $('bCycle').classList.toggle('on', S.auto);
   $('bLoop').classList.toggle('on', S.loop.state !== 'off');
-  $('bLoop').firstChild.textContent = { off: 'Loop ', arm: 'Loop: waiting ', rec: 'Loop: recording ', play: 'Loop: playing ' }[S.loop.state];
+  $('bLoop').firstChild.textContent = { off: 'Loop ', arm: 'Loop: waiting ', rec: 'Loop: recording ', play: 'Loop: playing ', held: 'Loop: held ' }[S.loop.state];
+  $('ombak').value = sliderFromOmbak(S.ombak); $('tempo').value = S.targetBpm;   // (the FM-1's knobs move these too)
+  $('breath').value = Math.round(S.breath * 100); $('density').value = Math.round(S.density * 100); $('space').value = Math.round(S.space * 100);
+  $('cyc').value = S.cycleLen; $('mode').value = S.mode;
+  refreshFx();
   $('cycleState').textContent = (S.auto ? 'the cycle keeps it' : 'by hand') + ` · ${S.cycleLen} beats`;
   $('ensHint').textContent = ENSEMBLES[S.ens].hint;
   const t = TUN[S.tuning];
@@ -1127,8 +1429,7 @@ const FX = [
   ['fxTides', 'tdShape', 'Shape', () => S.tide.shape * 100, v => S.tide.shape = v / 100,
     () => S.tide.shape < 0.05 ? 'even' : S.tide.shape > 0.95 ? 'wandering' : pct(S.tide.shape) + ' wandering'],
   ['fxTides', 'tdSpace', 'Space (the send)', () => S.tide.space * 100, v => S.tide.space = v / 100, () => pct(S.tide.space)],
-  ['fxTides', 'tdBright', 'Bright (the mallets)', () => S.tide.bright * 100, v => S.tide.bright = v / 100, () => pct(S.tide.bright)],
-  ['fxTides', 'tdSwell', 'Swell (the ensemble)', () => S.tide.swell * 100, v => S.tide.swell = v / 100, () => pct(S.tide.swell)],
+  ['fxTides', 'tdSwell', 'Swell (louder, brighter)', () => S.tide.swell * 100, v => S.tide.swell = v / 100, () => pct(S.tide.swell)],
   ['fxTides', 'tdOmbak', 'Ombak (its rate)', () => S.tide.ombak * 100, v => S.tide.ombak = v / 100, () => pct(S.tide.ombak)],
   ['fxPan', 'pnRate', 'Sway rate', () => S.pan.rate, v => S.pan.rate = v, () => S.pan.rate ? fmtSecs(panSecs(S.pan.rate)) : 'on the tide'],
   ['fxPan', 'pnOffset', 'Offset', () => S.pan.offset * 100, v => S.pan.offset = v / 100,
@@ -1155,7 +1456,12 @@ function buildFx() {
   }
   refreshFx();
 }
-function refreshFx() { for (const [, id, , , , show] of FX) $(id + 'Out').textContent = show(); }
+function refreshFx() {
+  if (!$('rvDecayOut')) return;   // (not built yet)
+  for (const [, id, , get, , show] of FX) { $(id + 'Out').textContent = show(); if (document.activeElement !== $(id)) $(id).value = get(); }
+  $('rvInterval').value = S.rv.interval;
+  for (const p of PARTS) { $('pp_' + p.id).value = S.pan.parts[p.id][0] * 100; $('ps_' + p.id).value = S.pan.parts[p.id][1] * 100; }
+}
 const fv = $('field'), f2 = fv.getContext('2d');
 function drawField() {   // the tide's last tide (newest on the right), and each part's lane
   const W = fv.width, H = fv.height, top = 6, th = 50, mid = top + th / 2;
@@ -1214,7 +1520,7 @@ function init() {
   $('bSlower').addEventListener('click', () => { ensureAudio(); cueTempo(1 / 1.33); });
   $('bEnd').addEventListener('click', cueEnding);
   $('bCycle').addEventListener('click', toggleCycle);
-  $('bLoop').addEventListener('click', toggleLoop);
+  $('bLoop').addEventListener('click', loopRec);
   // buttons should not keep focus, so Space always starts and stops the cycle
   document.querySelectorAll('button').forEach(b => b.addEventListener('mouseup', () => b.blur()));
   buildKeyboard();
@@ -1222,6 +1528,7 @@ function init() {
   requestAnimationFrame(draw);
 }
 init();
+syncKnobs();
 </script>
 </body>
 </html>

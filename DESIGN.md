@@ -77,7 +77,8 @@ prototype's answers, for David to listen to and overrule; the firmware follows w
     next beat, and the elaboration spends the beat turning toward it. Pressed again before the beat, the last
     key wins. No new note: the core holds and the parts circle the note they have.
   - **Black keys:** gong (wadon), gong lanang, kempur, kemong, kajar by hand; then the cues faster, slower,
-    ending; then cycle ⇄ hand, next mode (or next tuning, for sets without modes), loop.
+    ending; then the kotekan, reyong and ornaments in and out (the first prototype had cycle ⇄ hand, next mode
+    and loop here: they moved to ARP, SELECT and REC/PLAY, see the interface below).
 - **Ombak** is a pair per stroke, pengumbang at f − b/2 and pengisep at f + b/2, panned a little apart, with
   b the same number of beats a second across the range. The knob runs 0.25–10 Hz (slow breath, gentle wave,
   shimmer, bright shimmer). The gongs beat slower than the bars (a fraction of b), so their hum breathes.
@@ -162,6 +163,97 @@ prototype's answers, for David to listen to and overrule; the firmware follows w
     carries the name and the tempo, as Penumbra's.
 - **Next for the prototype,** if David wants: the kendang's cues as sound (a stroke pattern before each
   change), real colotomic forms, a "free" mode with no beat, and the ombak knob reaching ringing notes.
+
+## Performance and the interface (first layout, 2026-11-04)
+
+Built on Penumbra's controls and conventions, so the two feel like one family: the same keys, encoders and
+buttons, HOME after 30 seconds untouched, ALGO as the tempo and as each SHAPE page's level, FX held for throws,
+any button held to say what it does. The prototype's screen panel mocks all of it (the buttons and encoders
+under it, and on the keyboard as Penumbra's emulator has them).
+
+### The workflows
+
+- **Sit down and play.** Switch on: HOME, the Ongkara, stopped. The white keys already play the gendèr and
+  the black keys the gongs, so you can find the tuning before anything moves. **SEQ** starts the cycle: the
+  gong opens it (when the cycle keeps the gongs) and the light sets off round the rim. SEQ again stops it, and
+  everything rings out.
+- **Lead the melody.** Each white key sounds your gendèr at once and becomes the next core note; the core
+  lands on it at the next beat and the elaboration spends the beat turning toward it. Play nothing and the
+  parts circle the note they have. **OCT−/OCT+** move the keys an octave either way.
+- **Let it grow and settle.** HOME's knobs are the performance: **OMBAK** (the shimmer's rate), **DENSITY**
+  (from the core alone to a flowing kotekan), **SPACE**, **BREATH** (steady to swelling and slowing into the
+  gong). **ALGO** is the tempo. The black keys bring the elaborating parts in and out (9 kotekan, 10 reyong,
+  11 ornaments), each at once, so a piece can begin with the core and the gongs and open out.
+- **Change place at the gong.** On HOME, **SELECT** walks the modes (selisir, tembung, sunaren, baro; pathet
+  nem, barang); **PRESETS** walks the gamelan (gendèr wayang, semar pegulingan, angklung, gong gede). Either
+  arrives with the next gong, as a real ensemble would change, and HOME shows what is coming (`SELISIR →
+  TEMBUNG`). Stopped, they change at once.
+- **Take the gongs.** **ARP** switches the gongs between the cycle and your hand (lit: the cycle keeps them).
+  By hand, black 1-5 strike gong, gong lanang, kempur, kemong and kajar, and the rim's marks dim. The beat runs
+  on either way.
+- **Cue the ensemble,** as the kendang would: black 6 faster, 7 slower, 8 the ending (slowing, thinning,
+  closing on the next gong at least four beats away).
+- **Loop the core.** **REC** records the core over the next cycle from its start (8 or 16 beats; REC again
+  cancels); then it plays as the core and your keys play the gendèr freely over it. **PLAY** holds the loop
+  (you lead again) and brings it back; **PLAY held** clears it. REC while it plays records it anew.
+- **Shape the sound.** **ENV** opens SHAPE, a page at a time (ENV again or SELECT for the next); **FX** the
+  space; **EDIT** the gamelan playing; **LFO** the library; **GLO** the system. **HOME** comes back.
+
+### The controls
+
+| Control | HOME | Elsewhere |
+| --- | --- | --- |
+| White keys | Your gendèr; the next core note | The same |
+| Black 1-5 | Gong, gong lanang, kempur, kemong, kajar (held: shape that gong, later) | The same |
+| Black 6-8 | Faster, slower, the ending | The same |
+| Black 9-11 | Kotekan, reyong, ornaments in and out (lit: in; held: shape that part, later) | The same |
+| K1-K4 | OMBAK, DENSITY, SPACE, BREATH | The page's four |
+| SELECT | The mode, at the next gong | The page or row |
+| PRESETS | The gamelan, at the next gong | The same |
+| ALGO | Tempo | SHAPE: the page's level (or its own); EDIT: change the row |
+| SEQ | The cycle: start, stop | |
+| ARP | The gongs: the cycle or the hand | |
+| REC / PLAY | Loop: record (cancel); hold, play; PLAY held: clear | |
+| ENV / FX / EDIT / LFO / GLO | SHAPE / SPACE / GAMELAN / LIBRARY / SYSTEM | Again: the next page or row |
+| SEL | | LIBRARY: open; GAMELAN: change the row |
+| SAVE | Save now | |
+| OCT− / OCT+ | The white keys' octave | |
+
+### The pages
+
+The screen is Penumbra's three bands: the header (the page; the tempo, or ALGO's value), the main band, the
+knob strip (what K1-K4 play). Values are shown Penumbra's way: shares as %, timbre as -/+% from AS MADE.
+
+| Page | K1 | K2 | K3 | K4 | ALGO |
+| --- | --- | --- | --- | --- | --- |
+| HOME | OMBAK | DENSITY | SPACE | BREATH | Tempo |
+| ENSEMBLE | CORE | KOTEKAN | REYONG | GONGS (levels) | Your gendèr's level |
+| GENDÈR | BRIGHT | RING | BLOOM (the resonator) | DAMP (your hand) | Its level |
+| BARS (gangsa, jublag, jegogan) | BRIGHT | RING | MALLET | BLOOM | The core's level |
+| REYONG | BRIGHT | RING | MALLET | | Its level |
+| GONGS | HUM | SWELL (how slowly it blooms) | BODY (the stroke) | OMBAK (how slowly they beat) | Their level |
+| TIDES | RATE | SPACE | SWELL (louder and brighter) | OMBAK | SHAPE |
+| PAN | GENDÈR | CORE | KOTEKAN (all the elaboration) | GONGS | RATE |
+| PAN 2 | (the same four's sway) | | | | OFFSET |
+| FX: SPACE | DECAY | SIZE | SHIMMER | TONE | |
+| FX: SPACE 2 | MOTION | INTERVAL | LOW CUT | LEVEL | |
+
+- **GAMELAN (EDIT)**, a list: TUNING, MODE, CYCLE, THE GONGS, CORE ON (jublag or gendèr), KOTEKAN ON (gangsa or
+  gendèr), REYONG, ORNAMENTS. Later: SEL to keep it as a user gamelan.
+- **LIBRARY (LFO)**: the four gamelan and four user slots; SEL opens one, arriving at the gong.
+- **SYSTEM (GLO)**: Penumbra's (MIDI, clock, output level, play at power-on, sleep, about), to fill in.
+
+Settled on the way: TIDES' BRIGHT and SWELL became one SWELL (struck bronze grows louder and brighter
+together), and PAN has four places, the elaboration moving as one (the reyong sits right of the kotekan
+within it).
+
+### Still to design
+
+The holds (a gong key: LEVEL, PITCH (which tone), HUM, DECAY; a part key: its density, register, figure;
+FX: throws such as SHIMMER, FREEZE, DIP and a swell to the tide's crest), A/B as Penumbra's ENV hold, user
+gamelan and saving, MIDI (the core and the gendèr on channels, the cues as notes, the macros as CCs), SLEEP,
+and the cheat sheet. Penumbra's delay is left out for now: the gamelan's own ringing and the ombak fill that
+space.
 
 ## When the firmware starts: what comes from Penumbra
 
