@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ombak prototype</title>
+<!--
+  Ombak: a sound prototype for an FM-1 firmware inspired by Balinese gamelan.
+  Lunar Eclipse Forge. GPL-3.0-only. One self-contained page: Web Audio, no build step.
+-->
+<style>
+:root {
+  --bg: #100e0c; --panel: #1b1713; --line: #3a3128; --ink: #f0e7d8; --muted: #a8998a;
+  --bronze: #d6a54e; --jade: #74bba4; --rose: #d27c6c; --sky: #8fa9d8;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header, main, footer { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+header { padding-top: 20px; }
+h1 { margin: 0; font-weight: 600; letter-spacing: .02em; color: var(--bronze); }
+h1 small { font-size: .5em; color: var(--muted); font-weight: 400; margin-left: .6em; }
+h2 { font-size: 1rem; color: var(--bronze); margin: 0 0 8px; font-weight: 600; }
+p { margin: 4px 0 8px; }
+.muted { color: var(--muted); }
+.grid { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; margin-top: 14px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+#stage { position: relative; }
+#circle { width: 100%; aspect-ratio: 1; display: block; }
+#centre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-align: center; }
+#coreNow { font-size: 2.1rem; color: var(--ink); }
+#coreNext { color: var(--muted); min-height: 1.4em; }
+#cycleState { font-size: .85rem; color: var(--jade); margin-top: 4px; }
+#status { min-height: 1.4em; color: var(--muted); font-size: .9rem; margin-top: 6px; text-align: center; }
+.ctls { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 18px; }
+.ctl label { display: flex; justify-content: space-between; gap: 8px; font-size: .9rem; }
+.ctl label output { color: var(--bronze); font-variant-numeric: tabular-nums; }
+.ctl input[type=range] { width: 100%; accent-color: var(--bronze); }
+select, button { font: inherit; color: var(--ink); background: #241f19; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+select { width: 100%; }
+button { cursor: pointer; }
+button:hover { border-color: var(--bronze); }
+button.on { background: #3a2e1b; border-color: var(--bronze); color: var(--bronze); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.checks { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .9rem; }
+.hint { font-size: .82rem; color: var(--muted); }
+#kbdWrap { margin-top: 16px; overflow-x: auto; }
+#kbd { position: relative; height: 150px; min-width: 640px; user-select: none; touch-action: none; }
+.wk, .bk { position: absolute; border-radius: 0 0 6px 6px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; font-size: .72rem; padding-bottom: 6px; cursor: pointer; }
+.wk { top: 0; height: 150px; background: #e9e0cf; color: #2a231b; border: 1px solid #8c7d68; }
+.wk b { font-size: .9rem; }
+.wk.lit { background: var(--bronze); }
+.wk.next { box-shadow: inset 0 -6px 0 var(--jade); }
+.bk { top: 0; height: 92px; background: #2b241d; color: var(--ink); border: 1px solid #000; z-index: 2; line-height: 1.15; text-align: center; padding: 0 2px 5px; }
+.bk.lit { background: var(--rose); color: #1b1713; }
+.bk.gongk { background: #3b2a22; }
+.bk.cuek { background: #23292e; }
+.bk.ctlk { background: #262331; }
+.kc { opacity: .6; font-size: .7rem; }
+#about { margin: 16px auto 32px; }
+#about li { margin-bottom: 4px; }
+code { color: var(--bronze); }
+kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: .85em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ombak <small>sound prototype · inspired by Balinese gamelan · for the M-VAVE FM-1</small></h1>
+  <p class="muted">Press <kbd>Space</kbd> to start the cycle. Lead the core melody with <kbd>Q</kbd>…<kbd>I</kbd> <kbd>A</kbd>…<kbd>K</kbd>
+  (the FM-1's 16 white keys); the ensemble heads for each note you play and lands on it at the next beat.
+  <kbd>1</kbd>…<kbd>0</kbd> <kbd>-</kbd> are the 11 black keys: gongs by hand, cues and switches. Headphones help: the gongs are low.</p>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="panel" id="stage" aria-label="The gong cycle">
+      <canvas id="circle" width="600" height="600"></canvas>
+      <div id="centre"><div id="coreNow">·</div><div id="coreNext"></div><div id="cycleState"></div></div>
+      <div id="status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <div class="row">
+        <button id="bStart">Start <span class="kc">Space</span></button>
+        <button id="bFaster">Faster <span class="kc">6</span></button>
+        <button id="bSlower">Slower <span class="kc">7</span></button>
+        <button id="bEnd">Ending <span class="kc">8</span></button>
+        <button id="bCycle">The cycle keeps it <span class="kc">9</span></button>
+        <button id="bLoop">Loop <span class="kc">-</span></button>
+      </div>
+      <div class="ctls">
+        <div class="ctl"><label for="ens">Ensemble</label><select id="ens"></select></div>
+        <div class="ctl"><label for="tun">Tuning</label><select id="tun"></select></div>
+        <div class="ctl"><label for="mode">Mode <output id="modeOut"></output></label><select id="mode"></select></div>
+        <div class="ctl"><label for="cyc">Gong cycle</label><select id="cyc">
+          <option value="8">8 beats</option><option value="16">16 beats</option><option value="32">32 beats</option></select></div>
+        <div class="ctl"><label for="ombak">Ombak <output id="ombakOut"></output></label><input id="ombak" type="range" min="0" max="100" step="1"></div>
+        <div class="ctl"><label for="tempo">Tempo (core beats/min) <output id="tempoOut"></output></label><input id="tempo" type="range" min="18" max="96" step="1"></div>
+        <div class="ctl"><label for="breath">Breath <output id="breathOut"></output></label><input id="breath" type="range" min="0" max="100" step="1"></div>
+        <div class="ctl"><label for="density">Density <output id="densityOut"></output></label><input id="density" type="range" min="0" max="100" step="1"></div>
+        <div class="ctl"><label for="space">Space <output id="spaceOut"></output></label><input id="space" type="range" min="0" max="100" step="1"></div>
+        <div class="ctl"><label for="vol">Volume <output id="volOut"></output></label><input id="vol" type="range" min="0" max="100" step="1"></div>
+      </div>
+      <div class="row checks" role="group" aria-label="Parts">
+        <label><input type="checkbox" id="pCore"> core (jublag, jegogan)</label>
+        <label><input type="checkbox" id="pKot"> kotekan</label>
+        <label><input type="checkbox" id="pKet"> reyong</label>
+        <label><input type="checkbox" id="pOrn"> gendèr ornaments</label>
+        <label><input type="checkbox" id="pDamp"> damp your gendèr</label>
+      </div>
+      <p class="hint" id="ensHint"></p>
+      <p class="hint" id="tunHint"></p>
+    </section>
+  </div>
+
+  <div id="kbdWrap" class="panel"><div id="kbd" aria-label="FM-1 keyboard"></div></div>
+
+  <section id="about" class="panel">
+    <h2>What you are hearing</h2>
+    <p>Every instrument is a pair: <i>pengumbang</i> (lower) and <i>pengisep</i> (higher), tuned the Ombak knob's number of beats per
+    second apart, so each note shimmers. The bars and kettles are a few FM operators at inharmonic ratios; the gongs add a slow hum
+    that swells after the stroke. The core part (<i>pokok</i>) sounds on the beat; the interlocking pair (<i>kotekan</i>: <i>polos</i> on
+    the beat, <i>sangsih</i> between) and the reyong leave each core note and turn toward the next one before it arrives.
+    Your keys play the gendèr at once and set the next core note. With no new note, the parts circle the one they have.</p>
+    <h2>Tunings and sources</h2>
+    <ul id="sources"></ul>
+    <p class="hint">Balinese pelog modes (selisir, tembung, sunaren, baro) and the tone names in each follow the table in
+    Wikipedia's <i>Pelog</i> article; baro has several interpretations, this is one common one. Which measured tone is named
+    <i>ding</i> in the slendro sets is this prototype's assumption (the lowest listed tone), still to be checked.</p>
+    <h2>Respect</h2>
+    <p class="hint">Ombak is an instrument inspired by gamelan, not a gamelan. Gamelan is living music, made by communities in Bali, Java and
+    around the world; the names, tunings and forms here are learned from them, and simplified. The colotomic patterns are sketches
+    in the spirit of Balinese forms, not specific pieces. Hear the real thing, and learn from its players.</p>
+  </section>
+</main>
+
+<script>
+'use strict';
+const mod = (a, n) => ((a % n) + n) % n;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+// ---- tunings: measured sets, in cents above the set's reference pitch (Hz) ----
+const BALI = ['ding', 'dong', 'deng', 'dung', 'dang'];
+const BALI_MODES = [   // saih pitu tones (1-7) in each five-tone mode, in order ding dong deng dung dang
+  { name: 'selisir', tones: [1, 2, 3, 5, 6] },
+  { name: 'tembung', tones: [4, 5, 6, 1, 2] },
+  { name: 'sunaren', tones: [5, 6, 7, 2, 3] },
+  { name: 'baro', tones: [3, 4, 5, 7, 1] },
+];
+const JAVA_PATHET = [
+  { name: 'pathet nem', tones: [1, 2, 3, 5, 6] },
+  { name: 'pathet barang', tones: [2, 3, 5, 6, 7] },
+];
+const TUNINGS = [
+  { id: 'gw-peliatan', fam: 'slendro', name: 'Gendèr wayang, Peliatan', hz: 305.5,
+    cents: [0, 235.419, 453.560, 704.786, 927.453], names: BALI,
+    src: 'Gendèr wayang from Peliatan, South Bali, 1/1 = 305.5 Hz: Scala archive, slendro_pliat.scl.' },
+  { id: 'gw-ubud', fam: 'slendro', name: 'Gendèr wayang, Ubud', hz: 347,
+    cents: [0, 193, 457, 687, 919], names: BALI,
+    src: 'Gendèr wayang from Ubud, South Bali, 1/1 = 347 Hz: Scala archive, slendrod1.scl.' },
+  { id: 'gender-tabanan', fam: 'slendro', name: 'Low gendèr, Tabanan', hz: 179,
+    cents: [0, 292.926, 507.690, 762.150, 1005.735], names: BALI,
+    src: 'Low gendèr from Tabanan, 1/1 = 179 Hz: McPhee, Music in Bali (1966), via Scala slendro8.scl.' },
+  { id: 'angklung-sangsit', fam: 'slendro', name: 'Angklung, Sangsit (five tones)', hz: 294,
+    cents: [0, 231.174, 457.834, 684.199, 922.793], names: BALI,
+    src: 'Gamelan angklung from Sangsit, North Bali (five-tone), 1/1 = 294 Hz: Scala archive, slendro_ang.scl.' },
+  { id: 'angklung-mas', fam: 'slendro', name: 'Angklung, Mas (four tones)', hz: 410,
+    cents: [0, 232.757, 408.133, 715.973], names: ['dong', 'deng', 'dung', 'dang'],
+    src: 'Saih angklung, four-tone slendro from Mas, 1/1 = 410 Hz: McPhee, Music in Bali (1966), via Scala slendro12.scl.' },
+  { id: 'kanyut-slendro', fam: 'slendro', name: 'Kyai Kanyut Mesem slendro (Java)', hz: 291,
+    cents: [0, 222.974, 475.590, 711.842, 937.091], names: ['1', '2', '3', '5', '6'],
+    src: 'Gamelan Kyai Kanyut Mesem, Mangkunegaran, Surakarta, slendro, 1/1 = 291 Hz: Surjodiningrat, Sudarjana & Susanto, Tone measurements of outstanding Javanese gamelans in Jogjakarta and Surakarta (1972), via Scala slendro_ky1.scl.' },
+  { id: 'sp-tampak', fam: 'pelog', name: 'Semar pegulingan saih pitu, Tampak Gangsul', hz: 310,
+    cents: [0, 144.576, 282.754, 546.234, 671.911, 774.860, 1023.790], modes: BALI_MODES,
+    src: 'Gamelan semar pegulingan saih pitu, Tampak Gangsul (Denpasar; "Tampak Gangsai" in the file), 1/1 = 310 Hz: McPhee, Music in Bali (1966), via Scala pelog12.scl.' },
+  { id: 'sp-ksatria', fam: 'pelog', name: 'Saih pitu, Ksatria (Denpasar)', hz: 312.5,
+    cents: [0, 153, 315, 552, 706, 848, 1058], modes: BALI_MODES,
+    src: 'Gamelan saih pitu from Ksatria, Denpasar, 1/1 = 312.5 Hz: Scala archive, pelog1.scl.' },
+  { id: 'gong-peliatan', fam: 'pelog', name: 'Gamelan gong, Peliatan (selisir)', hz: 280,
+    cents: [0, 148.059, 268.637, 638.994, 762.706], names: BALI,
+    src: 'Gamelan gong from Peliatan, five-tone pelog selisir, 1/1 = 280 Hz: McPhee, Music in Bali (1966), via Scala selisir3.scl.' },
+  { id: 'kanyut-pelog', fam: 'pelog', name: 'Kyai Kanyut Mesem pelog (Java)', hz: 295,
+    cents: [0, 124.521, 271.058, 522.809, 688.207, 787.819, 954.515], modes: JAVA_PATHET, java: true,
+    src: 'Gamelan Kyai Kanyut Mesem, Mangkunegaran, Surakarta, pelog, 1/1 = 295 Hz: Surjodiningrat et al. (1972), via Scala pelog_me1.scl.' },
+];
+const TUN = Object.fromEntries(TUNINGS.map(t => [t.id, t]));
+
+// ---- ensembles: each sets a starting point; everything stays adjustable ----
+const ENSEMBLES = {
+  gender: { name: 'Gendèr wayang', tuning: 'gw-peliatan', cycle: 8, auto: false, core: 'gender', kot: 'gender',
+    parts: { core: true, kot: true, ket: false, orn: false }, ombak: 6, bpm: 44, breath: 25, density: 60,
+    hint: 'Four gendèr, slendro, intimate: the core and the kotekan are gendèr too. Gendèr wayang plays without gongs, so the cycle starts by hand.' },
+  semar: { name: 'Semar pegulingan', tuning: 'sp-tampak', cycle: 16, auto: true, core: 'jublag', kot: 'gangsa',
+    parts: { core: true, kot: true, ket: false, orn: true }, ombak: 4.5, bpm: 40, breath: 35, density: 50,
+    hint: 'The soft court ensemble, saih pitu pelog: try its modes with the 0 key.' },
+  angklung: { name: 'Angklung', tuning: 'angklung-mas', cycle: 8, auto: true, core: 'jublag', kot: 'gangsa',
+    parts: { core: true, kot: true, ket: true, orn: false }, ombak: 6.5, bpm: 48, breath: 20, density: 55,
+    hint: 'Four-tone slendro, gentle: the white keys climb four notes an octave.' },
+  gonggede: { name: 'Gong gede', tuning: 'gong-peliatan', cycle: 32, auto: true, core: 'jublag', kot: 'gangsa',
+    parts: { core: true, kot: true, ket: true, orn: false }, ombak: 3, bpm: 32, breath: 60, density: 30,
+    hint: 'The old, slow ceremonial ensemble: big gongs, long cycles, a breathing tempo.' },
+};
+
+// ---- FM instruments: carriers at inharmonic ratios, each with an optional modulator ----
+// op: r ratio, a level, d seconds to -60 dB, att attack, m {r ratio, i index, d decay}
+const INST = {
+  gender: { gain: 0.30, spread: 0.35, noise: { a: 0.05, fm: 3, q: 1.2, d: 0.025 }, ops: [
+    { r: 1, a: 1, d: 5.5, att: 0.004, m: { r: 1, i: 0.8, d: 0.22 } },
+    { r: 1, a: 0.35, d: 8, att: 0.09 },                         // the bamboo resonator's bloom
+    { r: 2.76, a: 0.10, d: 1.3, m: { r: 1, i: 0.5, d: 0.12 } },
+    { r: 5.40, a: 0.035, d: 0.45 } ] },
+  gangsa: { gain: 0.22, spread: 0.3, noise: { a: 0.10, fm: 4, q: 1.5, d: 0.018 }, ops: [
+    { r: 1, a: 1, d: 2.6, att: 0.002, m: { r: 1, i: 1.4, d: 0.07 } },
+    { r: 1, a: 0.25, d: 4, att: 0.05 },
+    { r: 2.71, a: 0.22, d: 0.9 },
+    { r: 5.15, a: 0.08, d: 0.25 },
+    { r: 8.9, a: 0.03, d: 0.08 } ] },
+  jublag: { gain: 0.30, spread: 0.3, noise: { a: 0.04, fm: 2.5, q: 1, d: 0.03 }, ops: [
+    { r: 1, a: 1, d: 6, att: 0.006, m: { r: 1, i: 0.6, d: 0.25 } },
+    { r: 1, a: 0.4, d: 9, att: 0.12 },
+    { r: 2.8, a: 0.08, d: 1.6 },
+    { r: 5.5, a: 0.025, d: 0.4 } ] },
+  jegogan: { gain: 0.34, spread: 0.3, noise: { a: 0.03, fm: 2.5, q: 1, d: 0.04 }, ops: [
+    { r: 1, a: 1, d: 8, att: 0.008, m: { r: 1, i: 0.5, d: 0.3 } },
+    { r: 1, a: 0.4, d: 11, att: 0.15 },
+    { r: 2.8, a: 0.06, d: 2 } ] },
+  reyong: { gain: 0.15, spread: 0.3, noise: { a: 0.14, fm: 6, q: 3, d: 0.012 }, ops: [
+    { r: 1, a: 1, d: 1.8, att: 0.002, m: { r: 1.5, i: 1.0, d: 0.05 } },
+    { r: 2.37, a: 0.2, d: 0.6 },
+    { r: 3.94, a: 0.12, d: 0.35 },
+    { r: 5.6, a: 0.05, d: 0.15 } ] },
+  gong: { gain: 0.55, ombak: 0.12, spread: 0.25, glide: 0.012, noise: { a: 0.10, fm: 1.5, q: 0.7, d: 0.08 },
+    hum: { a: 0.9, rise: 1.1, d: 14 }, ops: [
+    { r: 1, a: 0.5, d: 9, att: 0.012, m: { r: 1.41, i: 0.9, d: 0.7 } },
+    { r: 2.03, a: 0.20, d: 5 },
+    { r: 2.86, a: 0.13, d: 3.2, m: { r: 1, i: 0.3, d: 0.4 } },
+    { r: 3.97, a: 0.07, d: 2 },
+    { r: 5.42, a: 0.04, d: 1 } ] },
+  kempur: { gain: 0.40, ombak: 0.18, spread: 0.25, glide: 0.008, noise: { a: 0.08, fm: 2, q: 0.8, d: 0.05 },
+    hum: { a: 0.7, rise: 0.6, d: 8 }, ops: [
+    { r: 1, a: 0.55, d: 6, att: 0.008, m: { r: 1.41, i: 0.8, d: 0.45 } },
+    { r: 2.07, a: 0.2, d: 3.2 },
+    { r: 2.92, a: 0.12, d: 2 },
+    { r: 4.1, a: 0.06, d: 1.1 } ] },
+  kemong: { gain: 0.22, ombak: 0.25, spread: 0.25, glide: 0.005, noise: { a: 0.08, fm: 3, q: 1, d: 0.03 },
+    hum: { a: 0.5, rise: 0.3, d: 5 }, ops: [
+    { r: 1, a: 0.6, d: 4, att: 0.005, m: { r: 1.41, i: 0.8, d: 0.3 } },
+    { r: 2.1, a: 0.2, d: 2 },
+    { r: 3.1, a: 0.1, d: 1.2 },
+    { r: 4.6, a: 0.05, d: 0.5 } ] },
+  kajar: { gain: 0.13, ombak: 0.5, spread: 0.2, noise: { a: 0.3, fm: 5, q: 2, d: 0.012 }, ops: [
+    { r: 1, a: 1, d: 0.2, att: 0.001, m: { r: 1.47, i: 2.2, d: 0.04 } },
+    { r: 2.6, a: 0.35, d: 0.08 } ] },
+};
+
+// ---- state ----
+const S = {
+  ens: 'semar', tuning: 'sp-tampak', mode: 0,
+  ombak: 4.5, targetBpm: 40, curBpm: 40, breath: 0.35, density: 0.5, space: 0.45, vol: 0.8,
+  cycleLen: 16, auto: true, coreInst: 'jublag', kotInst: 'gangsa',
+  parts: { core: true, kot: true, ket: false, orn: true }, dampGender: true,
+  running: false, pos: 0, beatNo: 0, C: null, next: null, ending: null, endMul: 1,
+  loop: { state: 'off', notes: [], len: 16, i: 0 },
+};
+
+// ---- the scale in use: five (or four) tones an octave, key 0 = the mode's first tone ----
+let SC = null;
+function computeScale() {
+  const t = TUN[S.tuning];
+  let cents, names, root = 0;
+  if (t.modes) {
+    const m = t.modes[S.mode % t.modes.length];
+    const tc = m.tones.map(k => t.cents[k - 1]);
+    root = tc[0];
+    cents = tc.map(c => mod(c - root, 1200));
+    names = t.java ? m.tones.map(String) : BALI;
+  } else { cents = t.cents.slice(); names = t.names; }
+  const n = cents.length;
+  let base = t.hz * Math.pow(2, root / 1200);
+  const lo = n >= 5 ? 130 : 105;
+  while (base >= lo * 2) base /= 2;
+  while (base < lo) base *= 2;
+  SC = { n, cents, names, base };
+}
+const pitch = i => SC.base * Math.pow(2, Math.floor(i / SC.n) + SC.cents[mod(i, SC.n)] / 1200);
+function fold(i, lo) {   // the lowest instance of tone i at or above lo Hz
+  i = mod(i, SC.n);
+  while (pitch(i) < lo) i += SC.n;
+  while (pitch(i - SC.n) >= lo) i -= SC.n;
+  return i;
+}
+function near(i, ref) {   // the instance of tone i nearest to index ref
+  let c = ref + mod(i - ref, SC.n);
+  if (c - ref > SC.n / 2) c -= SC.n;
+  return c;
+}
+const noteName = i => SC.names[mod(i, SC.n)];
+
+// ---- audio ----
+let ctx = null, master, dry, wet, comp, noiseBuf;
+function ensureAudio() {
+  if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+  ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.25;
+  master = ctx.createGain(); master.gain.value = S.vol;
+  master.connect(comp); comp.connect(ctx.destination);
+  dry = ctx.createGain(); dry.connect(master);
+  const conv = ctx.createConvolver(); conv.buffer = makeSpace(3.6);
+  wet = ctx.createGain(); wet.gain.value = S.space * 0.9;
+  dry.connect(conv); conv.connect(wet); wet.connect(master);
+  noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  setInterval(tick, 25);
+}
+function makeSpace(sec) {   // an open pavilion: a darkening, decaying stereo tail
+  const len = Math.floor(ctx.sampleRate * sec), pre = Math.floor(ctx.sampleRate * 0.015);
+  const b = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = b.getChannelData(ch); let y = 0;
+    for (let i = pre; i < len; i++) {
+      const tt = i / len;
+      y += (0.6 - 0.5 * tt) * ((Math.random() * 2 - 1) - y);
+      d[i] = y * Math.exp(-tt * 5) * (1 - tt);
+    }
+  }
+  return b;
+}
+
+// one stroke of a pair: pengumbang (f - beat/2) and pengisep (f + beat/2), a little apart in space
+function voice(name, f, t, vel, pan = 0) {
+  const spec = INST[name];
+  const beat = S.ombak * (spec.ombak ?? 1);
+  const out = ctx.createGain(); out.gain.value = vel * spec.gain; out.connect(dry);
+  const nodes = []; let end = t;
+  for (const [sgn, side] of [[-0.5, -1], [0.5, 1]]) {
+    const pn = ctx.createStereoPanner(); pn.pan.value = clamp(pan + side * spec.spread, -1, 1); pn.connect(out);
+    const ff = f + sgn * beat;
+    for (const op of spec.ops) {
+      const o = ctx.createOscillator(), g = ctx.createGain(), fr = ff * op.r, att = op.att ?? 0.003;
+      if (spec.glide) { o.frequency.setValueAtTime(fr * (1 + spec.glide), t); o.frequency.exponentialRampToValueAtTime(fr, t + 0.4); }
+      else o.frequency.setValueAtTime(fr, t);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(op.a * 0.5, t + att); g.gain.setTargetAtTime(0, t + att, op.d / 6.9);
+      o.connect(g); g.connect(pn);
+      if (op.m) {
+        const m = ctx.createOscillator(), mg = ctx.createGain(), mf = fr * op.m.r;
+        m.frequency.setValueAtTime(mf, t);
+        mg.gain.setValueAtTime(op.m.i * mf, t); mg.gain.setTargetAtTime(0, t, op.m.d / 6.9);
+        m.connect(mg); mg.connect(o.frequency); m.start(t); nodes.push(m);
+      }
+      o.start(t); nodes.push(o); end = Math.max(end, t + att + op.d);
+    }
+    if (spec.hum) {   // the gong's hum, swelling after the stroke
+      const h = spec.hum, o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = ff;
+      g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(h.a * 0.5, t, h.rise / 2.5); g.gain.setTargetAtTime(0, t + h.rise, h.d / 6.9);
+      o.connect(g); g.connect(pn); o.start(t); nodes.push(o); end = Math.max(end, t + h.rise + h.d);
+    }
+  }
+  if (spec.noise) {   // the mallet
+    const nz = spec.noise, src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = noiseBuf; bp.type = 'bandpass'; bp.frequency.value = Math.min(16000, f * nz.fm); bp.Q.value = nz.q;
+    g.gain.setValueAtTime(nz.a, t); g.gain.setTargetAtTime(0, t, nz.d / 4);
+    src.connect(bp); bp.connect(g); g.connect(out); src.start(t, Math.random() * 0.5); src.stop(t + nz.d * 3 + 0.05);
+  }
+  for (const n of nodes) n.stop(end + 0.05);
+  nodes[0].onended = () => out.disconnect();
+  return { out, nodes, end };
+}
+function damp(v, t, tau = 0.06) {
+  if (!v || t >= v.end) return;
+  v.out.gain.setTargetAtTime(0, t, tau);
+  for (const n of v.nodes) n.stop(Math.min(v.end + 0.05, t + tau * 8));
+  v.end = t;
+}
+const held = {};   // the last stroke of each damped part
+function strike(slot, name, f, t, vel, pan, dampAfter) {
+  if (dampAfter != null) damp(held[slot], t + dampAfter);
+  const v = voice(name, f, t, vel, pan);
+  held[slot] = v;
+  return v;
+}
+
+// ---- the gong cycle ----
+function placeOf(pos, L) {
+  if (pos === 0) return 'gong';
+  if (pos === L / 2) return 'kemong';
+  if (pos % (L / 4) === 0) return 'kempur';
+  return 'kajar';
+}
+function gongHz(kind) {
+  switch (kind) {
+    case 'gong': return pitch(fold(0, 44));
+    case 'lanang': return pitch(fold(0, 44) + 1);
+    case 'kempur': return pitch(fold(Math.min(3, SC.n - 1), 88));
+    case 'kemong': return pitch(fold(2, 280));
+    default: return pitch(fold(SC.n - 1, 620));
+  }
+}
+const hits = [];   // {pos, t} for the circle's flashes
+function playGong(kind, t, vel = 1) {
+  const name = kind === 'lanang' ? 'gong' : kind;
+  voice(name, gongHz(kind), t, vel, kind === 'lanang' ? 0.15 : kind === 'gong' ? -0.1 : 0);
+}
+
+// ---- the scheduler: a look-ahead clock, one beat = one core note, split into subdivisions ----
+const sched = { nextT: 0, j: 0, sub: 4, dur: 1.5, dyn: 1, fade: 1 };
+const beats = [];   // {t, pos, dur} for the travelling light
+function tick() {
+  if (!S.running) return;
+  const ahead = ctx.currentTime + 0.12;
+  while (S.running && sched.nextT < ahead) scheduleSub(sched.nextT);
+}
+function subdivisions() { return S.density < 0.08 ? 1 : S.density < 0.55 ? 4 : 8; }
+function nextCore() {
+  if (S.loop.state === 'play') return S.loop.notes[(S.loop.i) % S.loop.len];
+  return S.next ?? S.C;
+}
+
+function beginBeat(t) {
+  const L = S.cycleLen, pos = S.pos;
+  // the core note for this beat
+  if (S.loop.state === 'play') { S.C = S.loop.notes[S.loop.i % S.loop.len]; S.loop.i++; }
+  else if (S.next != null) { S.C = S.next; S.next = null; }
+  if (S.loop.state === 'arm' && pos % S.loop.len === 0) { S.loop.state = 'rec'; S.loop.notes = []; }
+  if (S.loop.state === 'rec') {
+    S.loop.notes.push(S.C);
+    if (S.loop.notes.length >= S.loop.len) { S.loop.state = 'play'; S.loop.i = 0; say('Loop playing: the core is yours to elaborate over.'); }
+  }
+  // tempo: glide toward the target, breathe across the cycle, slow for the ending
+  S.curBpm += (S.targetBpm - S.curBpm) * 0.3;
+  if (S.ending) { S.ending.beats++; S.endMul *= 1.09; }
+  const p = (pos + 1) / L;
+  sched.dur = 60 / S.curBpm * (1 + S.breath * 0.9 * Math.pow(p, 4)) * S.endMul;
+  sched.dyn = 1 + S.breath * 0.5 * Math.sin(Math.PI * p) - S.breath * 0.25;
+  sched.fade = S.ending ? Math.max(0.25, 1 - S.ending.beats * 0.08) : 1;
+  sched.sub = subdivisions();
+
+  const final = S.ending && pos === 0 && S.ending.beats > 4;
+  // the cycle's instruments at their places
+  const place = placeOf(pos, L);
+  if (S.auto || final) {
+    if (place === 'gong') { playGong('gong', t); playGong('kajar', t, 0.9); }
+    else { playGong(place, t, place === 'kajar' ? (pos % 2 ? 0.65 : 0.9) : 0.9); if (place !== 'kajar') playGong('kajar', t, 0.8); }
+    hits.push({ pos, t });
+  }
+  // the core
+  if (S.C != null && S.parts.core) {
+    if (S.coreInst === 'gender') strike('core', 'gender', pitch(fold(S.C, 150)), t, 0.8 * sched.dyn, -0.2, 0.05);
+    else {
+      strike('core', 'jublag', pitch(fold(S.C, 200)), t, 0.85 * sched.dyn, -0.15, 0.05);
+      // the jegogan takes every other core note
+      if (pos % 2 === 0 || final) strike('jeg', 'jegogan', pitch(fold(S.C, 100)), t, 0.8 * sched.dyn, 0.1, 0.05);
+    }
+  }
+  beats.push({ t, pos, dur: final ? Infinity : sched.dur });
+  if (beats.length > 64) beats.shift();
+  if (final) {
+    if (S.C != null) strike('orn', 'gender', pitch(fold(S.C, 300)), t + 0.01, 0.4, 0.3);
+    S.running = false; S.ending = null; S.endMul = 1; S.pos = 0;
+    say('The ending: closed on the gong.'); refresh();
+  }
+}
+
+function scheduleSub(t) {
+  if (sched.j === 0) beginBeat(t);
+  if (!S.running) return;
+  const j = sched.j, sub = sched.sub, C = S.C;
+  if (C != null) elaborate(t, j, sub, C, nextCore());
+  sched.j++;
+  sched.nextT = t + sched.dur / sub;
+  if (sched.j >= sub) { sched.j = 0; S.pos = (S.pos + 1) % S.cycleLen; S.beatNo++; }
+}
+
+// the interlocking parts and the reyong: leave the core note, turn toward the next before it arrives
+function kotekanNote(kc, kn, j, sub) {
+  if (j === 0) return kc;
+  const up = kn > kc ? true : kn < kc ? false : S.beatNo % 2 === 0;
+  const F = up ? [0, 1, -1] : [0, -1, 1];   // after the core note, circling it
+  const B = up ? [0, -1, 1] : [0, 1, -1];   // before the next, circling it (counted back from its arrival)
+  return j < sub / 2 ? kc + F[j % 3] : kn + B[(sub - j) % 3];
+}
+function elaborate(t, j, sub, C, N) {
+  const lvl = sched.dyn * sched.fade;
+  if (S.parts.kot && sub > 1) {
+    const lo = S.kotInst === 'gender' ? 250 : 300;
+    const kc = fold(C, lo); let kn = near(N, kc);
+    if (pitch(kn) < lo * 0.94) kn += SC.n;
+    if (pitch(kn) > lo * 2.6) kn -= SC.n;
+    const note = kotekanNote(kc, kn, j, sub);
+    const polos = j % 2 === 0;
+    const v = (0.5 + S.density * 0.3) * lvl * rnd(0.85, 1.05) * (polos ? 1 : 0.92);
+    strike(polos ? 'polos' : 'sangsih', S.kotInst, pitch(note), t + (polos ? 0 : rnd(0, 0.006)), v, polos ? -0.4 : 0.4,
+      sched.dur / sub * 0.9);
+  }
+  if (S.parts.ket && sub >= 4 && S.density > 0.2 && j % 2 === 0) {
+    const half = sub / 4, jj = j / 2;
+    const rc = fold(C, 480), rn = near(N, rc);
+    const note = jj < half ? rc + (jj % 2) : rn + ((jj - half) % 2);
+    strike('reyong', 'reyong', pitch(note), t, 0.6 * lvl * rnd(0.85, 1.05), 0.15, sched.dur / sub * 1.8);
+  }
+  if (S.parts.orn && S.density > 0.12) {
+    if (j === sub - 1 && sub > 1) strike('orn', 'gender', pitch(fold(N, 300)), t, 0.32 * lvl, 0.3);
+    if (j === 0) {
+      const g = fold(C, 150);
+      voice('gender', pitch(g), t + 0.004, 0.22 * lvl, 0.25);
+      voice('gender', pitch(g + SC.n), t + 0.004, 0.22 * lvl, 0.35);
+    }
+  }
+}
+
+// ---- playing ----
+function start() {
+  ensureAudio();
+  if (S.running) { stop(); return; }
+  S.running = true; S.pos = 0; S.beatNo = 0; S.ending = null; S.endMul = 1; S.curBpm = S.targetBpm;
+  if (S.loop.state === 'play') S.loop.i = 0;
+  sched.j = 0; sched.nextT = ctx.currentTime + 0.08;
+  say(S.auto ? 'The cycle keeps it: the gong opens the cycle.' : 'By hand: the gongs are on 1-5.');
+  refresh();
+}
+function stop() { S.running = false; S.ending = null; S.endMul = 1; say('Stopped.'); refresh(); }
+let playerVoice = null;
+function playWhite(i) {
+  ensureAudio();
+  const t = ctx.currentTime + 0.005;
+  if (S.dampGender && playerVoice) damp(playerVoice, t + 0.1, 0.12);
+  playerVoice = voice('gender', pitch(i), t, 0.9, 0);
+  if (S.loop.state !== 'play') {
+    if (S.running) S.next = i; else S.C = i;
+  }
+  refresh();
+}
+const BLACK = [
+  { id: 'gong', label: 'gong', cls: 'gongk', fn: () => hand('gong') },
+  { id: 'lanang', label: 'gong lanang', cls: 'gongk', fn: () => hand('lanang') },
+  { id: 'kempur', label: 'kempur', cls: 'gongk', fn: () => hand('kempur') },
+  { id: 'kemong', label: 'kemong', cls: 'gongk', fn: () => hand('kemong') },
+  { id: 'kajar', label: 'kajar', cls: 'gongk', fn: () => hand('kajar') },
+  { id: 'faster', label: 'faster', cls: 'cuek', fn: () => cueTempo(1.33) },
+  { id: 'slower', label: 'slower', cls: 'cuek', fn: () => cueTempo(1 / 1.33) },
+  { id: 'ending', label: 'ending', cls: 'cuek', fn: cueEnding },
+  { id: 'cycle', label: 'cycle / hand', cls: 'ctlk', fn: toggleCycle },
+  { id: 'mode', label: 'next mode', cls: 'ctlk', fn: nextMode },
+  { id: 'loop', label: 'loop', cls: 'ctlk', fn: toggleLoop },
+];
+function hand(kind) {
+  ensureAudio();
+  const t = ctx.currentTime + 0.005;
+  playGong(kind, t, kind === 'kajar' ? 0.9 : 1);
+  if (S.running) hits.push({ pos: S.pos, t });
+}
+function cueTempo(f) {
+  S.targetBpm = clamp(Math.round(S.targetBpm * f), 18, 96);
+  $('tempo').value = S.targetBpm; refresh();
+  say(f > 1 ? 'Faster: the ensemble pushes on.' : 'Slower: the ensemble settles.');
+}
+function cueEnding() {
+  if (!S.running || S.ending) return;
+  S.ending = { beats: 0 };
+  say('Ending: slowing, closing on the next gong.');
+}
+function toggleCycle() {
+  S.auto = !S.auto;
+  say(S.auto ? 'The cycle keeps it.' : 'By hand: strike the gongs on 1-5.'); refresh();
+}
+function nextMode() {
+  const t = TUN[S.tuning];
+  if (!t.modes) {   // no modes here: move to the next tuning of the same kind
+    const fam = TUNINGS.filter(x => x.fam === t.fam);
+    S.tuning = fam[(fam.indexOf(t) + 1) % fam.length].id; S.mode = 0;
+  } else S.mode = (S.mode + 1) % t.modes.length;
+  computeScale(); fillModes(); refresh();
+  say(TUN[S.tuning].modes ? 'Mode: ' + TUN[S.tuning].modes[S.mode].name : 'Tuning: ' + TUN[S.tuning].name);
+}
+function toggleLoop() {
+  const lp = S.loop;
+  lp.len = Math.min(16, S.cycleLen);
+  if (lp.state === 'off') { lp.state = 'arm'; say(`Loop: recording the next ${lp.len} core beats from the cycle's start.`); }
+  else { lp.state = 'off'; say('Loop off: you lead the core again.'); }
+  refresh();
+}
+
+// ---- view ----
+const $ = id => document.getElementById(id);
+let sayTimer = 0;
+function say(s) { $('status').textContent = s; clearTimeout(sayTimer); sayTimer = setTimeout(() => $('status').textContent = '', 5000); }
+const cv = $('circle'), g2 = cv.getContext('2d');
+const COLORS = { gong: '#d6a54e', kemong: '#74bba4', kempur: '#d27c6c', kajar: '#8a7c6c' };
+function draw() {
+  requestAnimationFrame(draw);
+  const W = cv.width, cx = W / 2, cy = W / 2, R = W * 0.4, L = S.cycleLen, now = ctx ? ctx.currentTime : 0;
+  g2.clearRect(0, 0, W, W);
+  g2.strokeStyle = '#3a3128'; g2.lineWidth = 3; g2.beginPath(); g2.arc(cx, cy, R, 0, Math.PI * 2); g2.stroke();
+  const flash = new Array(L).fill(0);
+  for (const h of hits) if (now >= h.t && h.pos < L) flash[h.pos] = Math.max(flash[h.pos], Math.exp(-(now - h.t) / 0.5));
+  while (hits.length > 64) hits.shift();
+  for (let p = 0; p < L; p++) {
+    const a = -Math.PI / 2 + 2 * Math.PI * p / L, kind = placeOf(p, L);
+    const r = { gong: 22, kemong: 13, kempur: 12, kajar: 4 }[kind] * W / 600;
+    const x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+    g2.globalAlpha = S.auto ? 1 : 0.45;
+    g2.fillStyle = COLORS[kind]; g2.beginPath(); g2.arc(x, y, r * (1 + flash[p] * 0.5), 0, Math.PI * 2); g2.fill();
+    if (flash[p] > 0.02) { g2.globalAlpha = flash[p] * 0.6; g2.beginPath(); g2.arc(x, y, r * 2.4, 0, Math.PI * 2); g2.fill(); }
+    g2.globalAlpha = 1;
+  }
+  // the travelling light
+  let b = null;
+  for (const x of beats) if (x.t <= now) b = x;
+  const frac = b ? clamp((now - b.t) / b.dur, 0, 1) : 0;
+  const pos = b ? b.pos + frac : 0;
+  const a = -Math.PI / 2 + 2 * Math.PI * pos / L;
+  const x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+  const grd = g2.createRadialGradient(x, y, 0, x, y, 34 * W / 600);
+  grd.addColorStop(0, 'rgba(255,240,200,.95)'); grd.addColorStop(0.3, 'rgba(240,200,120,.5)'); grd.addColorStop(1, 'rgba(240,200,120,0)');
+  g2.fillStyle = grd; g2.beginPath(); g2.arc(x, y, 34 * W / 600, 0, Math.PI * 2); g2.fill();
+  // the centre: now and next
+  const nowTxt = S.C == null ? '·' : noteName(S.C), N = S.running ? nextCore() : null;
+  if ($('coreNow').textContent !== nowTxt) $('coreNow').textContent = nowTxt;
+  const nx = N != null && N !== S.C ? '→ ' + noteName(N) : '';
+  if ($('coreNext').textContent !== nx) $('coreNext').textContent = nx;
+  document.querySelectorAll('.wk.next').forEach(k => { if (+k.dataset.i !== S.next) k.classList.remove('next'); });
+  if (S.next != null) $('w' + S.next)?.classList.add('next');
+}
+
+const WHITE_CODES = [...'QWERTYUI', ...'ASDFGHJK'].map(c => 'Key' + c);
+const BLACK_CODES = [...'1234567890'].map(c => 'Digit' + c).concat('Minus');
+const BLACK_AFTER = [0, 1, 3, 4, 5, 7, 8, 10, 11, 12, 14];   // C# D# F# G# A# ... over 16 white keys from C
+function buildKeyboard() {
+  const k = $('kbd'); k.innerHTML = '';
+  const w = 100 / 16;
+  for (let i = 0; i < 16; i++) {
+    const d = document.createElement('div');
+    d.className = 'wk'; d.id = 'w' + i; d.dataset.i = i;
+    d.style.left = (i * w) + '%'; d.style.width = w + '%';
+    d.innerHTML = `<b class="nm"></b><span class="oc"></span><span class="kc">${WHITE_CODES[i].slice(3)}</span>`;
+    d.addEventListener('pointerdown', e => { e.preventDefault(); press('w', i); });
+    d.addEventListener('pointerup', () => release('w', i)); d.addEventListener('pointerleave', () => release('w', i));
+    k.appendChild(d);
+  }
+  BLACK.forEach((b, bi) => {
+    const d = document.createElement('div');
+    d.className = 'bk ' + b.cls; d.id = 'b' + bi;
+    d.style.left = ((BLACK_AFTER[bi] + 1) * w - w * 0.32) + '%'; d.style.width = (w * 0.64) + '%';
+    d.innerHTML = `<span>${b.label}</span><span class="kc">${BLACK_CODES[bi].replace('Digit', '').replace('Minus', '-')}</span>`;
+    d.addEventListener('pointerdown', e => { e.preventDefault(); press('b', bi); });
+    d.addEventListener('pointerup', () => release('b', bi)); d.addEventListener('pointerleave', () => release('b', bi));
+    k.appendChild(d);
+  });
+}
+function labelKeys() {
+  for (let i = 0; i < 16; i++) {
+    const d = $('w' + i);
+    d.querySelector('.nm').textContent = noteName(i);
+    d.querySelector('.oc').textContent = '·'.repeat(Math.floor(i / SC.n) + 1);
+    d.title = `${noteName(i)}, ${pitch(i).toFixed(1)} Hz`;
+  }
+}
+function press(kind, i) {
+  $((kind === 'w' ? 'w' : 'b') + i)?.classList.add('lit');
+  if (kind === 'w') playWhite(i); else BLACK[i].fn();
+}
+function release(kind, i) { $((kind === 'w' ? 'w' : 'b') + i)?.classList.remove('lit'); }
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const wi = WHITE_CODES.indexOf(e.code), bi = BLACK_CODES.indexOf(e.code);
+  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) start(); return; }
+  if (wi < 0 && bi < 0) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  if (wi >= 0) press('w', wi); else press('b', bi);
+});
+document.addEventListener('keyup', e => {
+  const wi = WHITE_CODES.indexOf(e.code), bi = BLACK_CODES.indexOf(e.code);
+  if (wi >= 0) release('w', wi); if (bi >= 0) release('b', bi);
+});
+
+// ---- controls ----
+const ombakFromSlider = v => 0.25 * Math.pow(40, v / 100);   // 0.25 to 10 beats a second
+const sliderFromOmbak = hz => Math.round(100 * Math.log(hz / 0.25) / Math.log(40));
+function ombakWord(hz) { return hz < 1 ? 'slow breath' : hz < 3 ? 'gentle wave' : hz < 6.5 ? 'shimmer' : 'bright shimmer'; }
+function fillTunings() {
+  const sel = $('tun'); sel.innerHTML = '';
+  for (const fam of ['slendro', 'pelog']) {
+    const og = document.createElement('optgroup'); og.label = fam;
+    for (const t of TUNINGS.filter(x => x.fam === fam)) og.appendChild(new Option(t.name, t.id));
+    sel.appendChild(og);
+  }
+}
+function fillModes() {
+  const t = TUN[S.tuning], sel = $('mode'); sel.innerHTML = '';
+  if (t.modes) t.modes.forEach((m, i) => sel.appendChild(new Option(`${m.name} (${m.tones.join(' ')})`, i)));
+  else sel.appendChild(new Option(t.cents.length === 4 ? 'four tones (no modes)' : 'five tones (no modes)', 0));
+  sel.disabled = !t.modes; sel.value = S.mode;
+}
+function applyEnsemble(id) {
+  const e = ENSEMBLES[id];
+  Object.assign(S, { ens: id, tuning: e.tuning, mode: 0, cycleLen: e.cycle, auto: e.auto, coreInst: e.core, kotInst: e.kot,
+    parts: { ...e.parts }, ombak: e.ombak, targetBpm: e.bpm, breath: e.breath / 100, density: e.density / 100 });
+  if (!S.running) S.curBpm = S.targetBpm;
+  $('ombak').value = sliderFromOmbak(e.ombak); $('tempo').value = e.bpm; $('breath').value = e.breath; $('density').value = e.density;
+  $('cyc').value = e.cycle;
+  computeScale(); fillModes(); refresh();
+}
+function refresh() {
+  $('tun').value = S.tuning;
+  $('modeOut').textContent = TUN[S.tuning].modes ? TUN[S.tuning].modes[S.mode].name : '';
+  $('ombakOut').textContent = `${S.ombak.toFixed(S.ombak < 1 ? 2 : 1)} Hz · ${ombakWord(S.ombak)}`;
+  $('tempoOut').textContent = S.targetBpm;
+  $('breathOut').textContent = S.breath < 0.05 ? 'steady' : S.breath < 0.5 ? 'breathing' : 'swelling, slowing';
+  $('densityOut').textContent = S.density < 0.08 ? 'core only' : S.density < 0.55 ? 'a ripple' : 'flowing';
+  $('spaceOut').textContent = Math.round(S.space * 100);
+  $('volOut').textContent = Math.round(S.vol * 100);
+  $('pCore').checked = S.parts.core; $('pKot').checked = S.parts.kot; $('pKet').checked = S.parts.ket; $('pOrn').checked = S.parts.orn;
+  $('pDamp').checked = S.dampGender;
+  $('bStart').classList.toggle('on', S.running);
+  $('bStart').firstChild.textContent = S.running ? 'Stop ' : 'Start ';
+  $('bCycle').firstChild.textContent = S.auto ? 'The cycle keeps it ' : 'By hand ';
+  $('bCycle').classList.toggle('on', S.auto);
+  $('bLoop').classList.toggle('on', S.loop.state !== 'off');
+  $('bLoop').firstChild.textContent = { off: 'Loop ', arm: 'Loop: waiting ', rec: 'Loop: recording ', play: 'Loop: playing ' }[S.loop.state];
+  $('cycleState').textContent = (S.auto ? 'the cycle keeps it' : 'by hand') + ` · ${S.cycleLen} beats`;
+  $('ensHint').textContent = ENSEMBLES[S.ens].hint;
+  const t = TUN[S.tuning];
+  $('tunHint').textContent = `${t.name}: ${SC.cents.map(c => Math.round(c)).join(' · ')} cents from the first tone; white keys from ${SC.base.toFixed(1)} Hz.`;
+  labelKeys();
+}
+function bindRange(id, f) { $(id).addEventListener('input', e => { f(+e.target.value); refresh(); }); }
+function init() {
+  $('ens').innerHTML = '';
+  for (const [id, e] of Object.entries(ENSEMBLES)) $('ens').appendChild(new Option(e.name, id));
+  fillTunings();
+  $('sources').innerHTML = TUNINGS.map(t => `<li><b>${t.name}</b>: ${t.src}</li>`).join('') +
+    '<li>The Scala scale archive (Manuel Op de Coul, huygens-fokker.org/scala) transcribes these measurements. ' +
+    'McPhee, Colin. <i>Music in Bali</i>. Yale University Press, 1966.</li>';
+  $('ens').value = S.ens;
+  $('ens').addEventListener('change', e => applyEnsemble(e.target.value));
+  $('tun').addEventListener('change', e => { S.tuning = e.target.value; S.mode = 0; computeScale(); fillModes(); refresh(); });
+  $('mode').addEventListener('change', e => { S.mode = +e.target.value; computeScale(); refresh(); });
+  $('cyc').addEventListener('change', e => { S.cycleLen = +e.target.value; S.pos = S.pos % S.cycleLen; refresh(); });
+  bindRange('ombak', v => S.ombak = ombakFromSlider(v));
+  bindRange('tempo', v => S.targetBpm = v);
+  bindRange('breath', v => S.breath = v / 100);
+  bindRange('density', v => S.density = v / 100);
+  bindRange('space', v => { S.space = v / 100; if (wet) wet.gain.setTargetAtTime(S.space * 0.9, ctx.currentTime, 0.05); });
+  bindRange('vol', v => { S.vol = v / 100; if (master) master.gain.setTargetAtTime(S.vol, ctx.currentTime, 0.05); });
+  $('space').value = S.space * 100; $('vol').value = S.vol * 100;
+  for (const [id, key] of [['pCore', 'core'], ['pKot', 'kot'], ['pKet', 'ket'], ['pOrn', 'orn']])
+    $(id).addEventListener('change', e => { S.parts[key] = e.target.checked; });
+  $('pDamp').addEventListener('change', e => { S.dampGender = e.target.checked; });
+  $('bStart').addEventListener('click', start);
+  $('bFaster').addEventListener('click', () => { ensureAudio(); cueTempo(1.33); });
+  $('bSlower').addEventListener('click', () => { ensureAudio(); cueTempo(1 / 1.33); });
+  $('bEnd').addEventListener('click', cueEnding);
+  $('bCycle').addEventListener('click', toggleCycle);
+  $('bLoop').addEventListener('click', toggleLoop);
+  // buttons should not keep focus, so Space always starts and stops the cycle
+  document.querySelectorAll('button').forEach(b => b.addEventListener('mouseup', () => b.blur()));
+  buildKeyboard();
+  applyEnsemble(S.ens);
+  requestAnimationFrame(draw);
+}
+init();
+</script>
+</body>
+</html>

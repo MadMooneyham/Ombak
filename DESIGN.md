@@ -65,6 +65,71 @@ A playable browser page, no firmware:
 
 It sounds right before anything else is built.
 
+## The prototype: what it settled (2026-11-04)
+
+`prototype/index.html`: one page, Web Audio, no build step. Open it in a browser and play. These are the
+prototype's answers, for David to listen to and overrule; the firmware follows what survives.
+
+- **The keys,** as Penumbra's emulator maps them: `Q`…`I`, `A`…`K` are the 16 white keys, `1`…`0`, `-` the
+  11 black ones, `Space` starts and stops.
+  - **White keys** play your gendèr at once (the heart: it is always the gendèr under your hands) and set the
+    **next core note**. The core (jublag, with the jegogan an octave down on every other beat) strikes it at the
+    next beat, and the elaboration spends the beat turning toward it. Pressed again before the beat, the last
+    key wins. No new note: the core holds and the parts circle the note they have.
+  - **Black keys:** gong (wadon), gong lanang, kempur, kemong, kajar by hand; then the cues faster, slower,
+    ending; then cycle ⇄ hand, next mode (or next tuning, for sets without modes), loop.
+- **Ombak** is a pair per stroke, pengumbang at f − b/2 and pengisep at f + b/2, panned a little apart, with
+  b the same number of beats a second across the range. The knob runs 0.25–10 Hz (slow breath, gentle wave,
+  shimmer, bright shimmer). The gongs beat slower than the bars (a fraction of b), so their hum breathes.
+  The rate is set at each stroke, so a turn of the knob is heard on the next notes, not on ringing ones.
+- **The FM voices:** sine carriers at inharmonic ratios, some with a sine modulator whose index falls fast
+  (the mallet's brightness), plus a band of noise for the mallet. Gendèr: 1, 2.76, 5.40 and a slow-blooming
+  fundamental for the bamboo resonator. Gangsa: brighter, shorter, damped as the next note is struck.
+  Reyong: 1, 2.37, 3.94, 5.6, short. Gongs: 1, 2.03, 2.86, 3.97, 5.42 with a slight downward glide, and the
+  hum: a sine at the fundamental that swells for about a second after the stroke and fades over 14 s
+  (kempur and kemong smaller and quicker). These are the starting tables for `dsp/`.
+- **Elaboration** (it only ever knows the next core note, which is all a player gives it):
+  - *kotekan*: polos on the beat, sangsih between, panned left and right; together one line of 4 or 8
+    notes a beat (density). The first half circles the core note just struck, the second half circles the
+    next one, approaching from below when the melody rises and from above when it falls, landing on it at
+    the beat. On gendèr in gendèr wayang, on gangsa elsewhere.
+  - *reyong*: half as fast, norot-like: the note and its upper neighbour, switching to the next note
+    halfway through the beat (the anticipation is audible here).
+  - *gendèr ornaments* (semar pegulingan): the next note as a pickup just before the beat, the core note in
+    octaves on it.
+  - Slow and soft: the parts sit under the gendèr, and the elaboration swells mid-cycle with the breath.
+- **The gong cycle:** 8, 16 or 32 beats, the gong at the top of the circle (the end of one cycle, the start
+  of the next), the kemong at half, the kempur at the quarters, the kajar on every beat. These placements
+  are a sketch in the spirit of Balinese forms, not specific pieces; real forms (gilak, lelambatan's long
+  cycles, the batel that gendèr wayang adds) should replace them. "The cycle keeps it" plays them; "by hand"
+  leaves them to the black keys and dims the marks, while the beat runs on.
+- **Tempo:** the core-beat rate (18–96 a minute, 32–48 for these meditative presets), gliding toward its
+  target; faster and slower move the target by a third. **Breath** (0 = steady) slows the last beats into the
+  gong and swells the dynamics mid-cycle. **Ending** slows each beat, thins the elaboration and closes on the
+  next gong at least four beats away, then stops.
+- **The looper** works as sketched: armed, it records the next 8 (or 16) core beats from the cycle's start,
+  then plays them as the core while your keys play the gendèr freely over it.
+- **Ensembles** are starting points (tuning, cycle, parts, ombak, tempo), all adjustable after: gendèr wayang
+  (Peliatan slendro, gendèr for core and kotekan, the cycle by hand, since gendèr wayang has no gongs),
+  semar pegulingan (saih pitu, gangsa kotekan, gendèr ornaments), angklung (four-tone slendro, with reyong),
+  gong gede (five-tone pelog, 32 beats, slow, breathing, sparse).
+- **Tunings,** all from measured sets via the Scala archive (sources on the page):
+  - slendro: gendèr wayang of Peliatan and of Ubud; low gendèr, Tabanan (McPhee 1966); angklung, Sangsit
+    (five tones) and Mas (four, McPhee); Kyai Kanyut Mesem, Surakarta (Surjodiningrat et al. 1972);
+  - pelog: semar pegulingan saih pitu, Tampak Gangsul (McPhee) and Ksatria, Denpasar, with the modes selisir,
+    tembung, sunaren and baro; gamelan gong, Peliatan (five-tone selisir, McPhee); Kyai Kanyut Mesem pelog
+    with pathet nem and barang.
+  - White key 1 is always the mode's first tone (ding), placed between 130 and 260 Hz (105–210 for four
+    tones), so 16 keys climb three octaves and a tone (four octaves with four tones).
+- **Still to check** (respect: names and forms right):
+  - which measured tone is *ding* in the slendro sets (the prototype assumes the lowest listed);
+  - the Scala file's "Tampak Gangsai" read as Tampak Gangsul, Denpasar;
+  - *ngubeng* / *ngembat* for the breathing knob: *ngubeng* is usually a static figuration around one tone,
+    not a tempo, so the prototype says "breath" until the right words are found;
+  - baro has several versions; the page uses one common one (3 4 5 7 1).
+- **Next for the prototype,** if David wants: the kendang's cues as sound (a stroke pattern before each
+  change), real colotomic forms, a "free" mode with no beat, and the ombak knob reaching ringing notes.
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.

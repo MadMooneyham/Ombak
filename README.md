@@ -8,6 +8,7 @@ and every note shimmers with *ombak*, the beating of two instruments tuned sligh
 Ombak is inspired by gamelan, not a gamelan. It owes everything to the living traditions of Bali and Java
 and the communities who play them.
 
-See [DESIGN.md](DESIGN.md) for where it stands.
+See [DESIGN.md](DESIGN.md) for where it stands. To hear the sound, open
+[prototype/index.html](prototype/index.html) in a browser and play it from the computer keyboard.
 
 GPL-3.0-only. M-VAVE and FM-1 are trademarks of their owners.
