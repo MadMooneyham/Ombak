@@ -144,6 +144,20 @@ prototype's answers, for David to listen to and overrule; the firmware follows w
     gains energy (even two cross-coupled lines at 0.9 run away). So the network runs in an AudioWorklet where
     the page is a secure context (localhost, and file:// in Chrome), else in a ScriptProcessor. In the
     firmware, `spacevb.c` itself comes over, with its tables, and the tide and pan code from `engine.c`.
+- **HOME, a first mock-up (2026-11-04),** on the FM-1's 240×240 panel (Penumbra's ST7789), two versions to
+  choose between:
+  - *The gong* (recommended): the gong ageng face on, the cycle round its rim. Its boss (*pencon*) is the
+    sound: it flares at the stroke, swells and fades with the hum (the gong voice's own envelope), and beats
+    at the ombak rate; a halo behind it widens and narrows with the tide. Each core note lights a bead at
+    its place on the rim, fading over a cycle, and a faint ripple runs ahead of the light for the kotekan.
+    It is also Ombak's mark, for the logo and the Pages site.
+  - *The Ongkara* (ᬒᬁ, Om in Balinese script, not the Devanagari ॐ), set in Noto Sans Balinese (OFL; the
+    firmware would rasterise it with gen_font.py). It is a sacred syllable in Balinese Hinduism, so here it
+    only glows with the slow tide, never with the beat or the gong. Before it ships, ask someone from the
+    tradition whether it belongs on an instrument at all.
+  - Under either: the mode and tuning, PLAYING / STOPPED with CYCLE or BY HAND and the loop's state, and
+    HOME's four knobs as a first guess: OMBAK, DENSITY, SPACE, BREATH (SELECT: mode or tuning). The header
+    carries the name and the tempo, as Penumbra's.
 - **Next for the prototype,** if David wants: the kendang's cues as sound (a stroke pattern before each
   change), real colotomic forms, a "free" mode with no beat, and the ombak knob reaching ringing notes.
 
