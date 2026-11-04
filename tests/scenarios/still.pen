@@ -1,0 +1,35 @@
+# STILL, Ombak's own for meditation: a beat every ten seconds, the long rings; SLOWER held sinks it;
+# FREEZE and HUSH; then a reboot keeps what was shaped
+wait 300
+turn PRESET 2
+wait 200
+expect p0 3
+expect p12 25
+tap SEQ
+wait 100
+tapkey w0
+wait 9000
+tapkey w2
+wait 10000
+tapkey w4
+wait 12000
+expect playing 1
+expect bpm <8
+shot still.png
+key b6 down
+wait 6000
+key b6 up
+expect p12 <25
+press FX
+wait 100
+turn K2 60
+turn K4 60
+wait 3000
+release FX
+wait 4000
+expect clips 0
+tap SEQ
+wait 3000
+reboot
+wait 500
+expect p0 3

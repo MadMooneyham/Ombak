@@ -1,0 +1,31 @@
+# Ombak's words for the screen reader (fm1-reader): the screen's text <TAB> what to say. "#" a number, "*" a
+# word left out. tools/gen_words.py makes web/words/<id>.json (published with the site) and the link the
+# FM-1 sends. Change a line and a new file is made: keep the old ones (devices in the wild point at them).
+# url: https://madmooneyham.github.io/Ombak/words/
+OMBAK	ombak
+GENDER	gender
+GENDER WAYANG	gender wayang
+SEMAR PEGULINGAN	semar pegulingan
+GONG GEDE	gong gede
+GONG LANANG	gong lanang
+SAIH PITU	saih pitu
+KOTEKAN	kotekan
+BENCH	benchmark
+CTRL	control
+FX WET	effect returns
+VOICES 1	voices on core one
+VOICES 2	voices on core two
+OUTPUT	output
+LOAD/PEAK	load and peak
+XRUNS	dropouts
+2ND CORE	second core
+CORE 1	core one
+CORE 2	core two
+AVG %	average percent
+PEAK %	peak percent
+SEL	S E L
+REC	record
+OCTAVE #	octave #
+S A BEAT	seconds a beat
+HZ	hertz
+OCT #	octave #

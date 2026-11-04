@@ -1,0 +1,87 @@
+# Ombak: boot, the cycle, a melody led, the elaboration following; the screen's pages
+wait 500
+shot home_stopped.png
+expect playing 0
+expect view 0
+# the tuning found before the cycle: the white keys sound
+tapkey w2
+wait 300
+expect voices >0
+wav play.wav
+tap SEQ
+wait 200
+expect playing 1
+expect gong_ms <400
+tapkey w0
+wait 1500
+tapkey w3
+wait 1500
+tapkey w5
+wait 1500
+tapkey w2
+wait 1500
+shot home_playing.png
+expect core >-1
+wait 6000
+tapkey w7
+wait 3000
+shot home_later.png
+expect voices >3
+expect clips 0
+tap ENV
+wait 100
+shot shape_ensemble.png
+tap ENV
+wait 100
+shot shape_gender.png
+turn SELECT 4
+wait 100
+shot shape_gongs.png
+turn SELECT 1
+wait 100
+shot shape_tides.png
+turn SELECT 1
+wait 100
+shot shape_pan.png
+tap FX
+wait 100
+shot fx.png
+tap EDIT
+wait 100
+shot gamelan.png
+tap LFO
+wait 100
+shot library.png
+tap GLO
+wait 100
+shot system.png
+tap GLO
+wait 1500
+shot bench.png
+expect bench 1
+tap HOME
+# a gong held: its knobs
+key b0 down
+wait 500
+shot hold_gong.png
+turn ALGO 1
+expect p97 >-1
+key b0 up
+wait 100
+# FX held: the throws
+press FX
+wait 100
+turn K2 30
+wait 200
+shot hold_fx.png
+release FX
+wait 3000
+# the ending
+key b7 down
+wait 100
+key b7 up
+wait 75000
+expect playing 0
+wavstop
+expect peak_db_max -0.1
+expect peak_db_min -40

@@ -298,6 +298,35 @@ A/B as Penumbra's ENV hold, user gamelan and saving, MIDI (the core and the gend
 notes, the macros as CCs), SLEEP, and the cheat sheet. Penumbra's delay is left out for now: the gamelan's
 own ringing and the ombak fill that space.
 
+## The firmware: 0.1 beta (2026-11-04), the first build to play
+
+`./build.sh --release 0.1` makes `build/ombak-0.1.fwsc` (identity `FM-1_74000100`: 74 is Ombak's own, to confirm
+free on thefirmwarehub.com before a release; Penumbra's is 73). It installs as Penumbra does (BUILDING.md).
+
+**What it has:**
+- Penumbra's platform as is (boot, safe mode, update mode, USB, storage, the update path, the two cores, the
+  reverb, the master stage, the screen reader's channel, the simulator), renamed, in a bronze palette.
+- The voices (`dsp/bars.c`): the prototype's FM instruments (gendèr, gangsa, jublag, jegogan, reyong, gong,
+  kempur, kemong, kajar), a pool of 48, split across the two cores. The pengumbang-pengisep pair is computed as
+  one tone times its beating (exact for the carriers, half the cost), so the pair sounds from one place rather than
+  a little apart as in the prototype. The overload guard lets only 24 sound at once when the FM-1 struggles.
+- The gamelan (`app/gamelan.c`): the ten measured tunings, the modes, the five gamelan (STILL among them).
+- The engine (`app/engine.c`): the cycle on a 16-step grid a beat, the core led by the white keys, the kotekan,
+  reyong and ornaments, the gongs and their places, the breath, the cues, the ending (now at most 2.5 times as
+  slow at the gong), the loop, the tides, the pan, the throws, a mode or gamelan arriving with the gong, the tempo
+  from 3 to 96 a minute.
+- The interface (`app/ui.c`): the Ongkara HOME (its glyph and glow from `assets/ongkara.png`; SYSTEM's HOME row
+  switches to the gong), the SHAPE pages, FX, GAMELAN, LIBRARY, SYSTEM, BENCH, every hold, the lights, the screen
+  reader's words. Everything shaped is saved (`OBJ_WORK`, its own markers: Penumbra's records load as defaults).
+- The simulator's scenarios (`tests/scenarios/play.pen`, `still.pen`) pass: the cycle, a melody led, the pages, the
+  holds, FREEZE and HUSH, STILL sinking below 6 a minute, the ending, a reboot keeping the work; no clicks.
+
+**Not yet:** MIDI (in and out, the clock), user gamelan in the library, A/B, SLEEP, the web installer's own pages
+and the cheat sheet, the manual.
+
+**To find out on the FM-1:** how hard it works (BENCH, and SEL there for the load test: 48 long gendèr notes at
+once), whether the gongs' lows and the glow read well, how the knobs feel in their steps, and how it all sounds.
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.
