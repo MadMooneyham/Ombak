@@ -178,6 +178,14 @@ static void bench_block(uint32_t n)
         pub.blocks = acc.blocks;
         pub.two_cores = (uint8_t)plat_cpu2_on();
         pub.voices = (uint8_t)bars_active(&bars);
+        {
+            static uint32_t last[2];
+            for (k = 0; k < 2; k++) {
+                uint32_t s = bars_sines[k];
+                pub.ksines[k] = (uint16_t)((s - last[k]) / 1000u);
+                last[k] = s;
+            }
+        }
         acc.budget = 0.0f;
         acc.blocks = acc.frames = 0;
         __asm__ volatile("" ::: "memory");
@@ -433,7 +441,7 @@ static bars_handle_t play(int inst, int part, float hz, float vel, float pan, ui
     return bars_strike(&bars, &s);
 }
 /* the damped parts' last strokes */
-enum { H_CORE, H_JEG, H_POLOS, H_SANGSIH, H_REY, H_ORN, H_N };
+enum { H_CORE, H_JEG, H_POLOS, H_SANGSIH, H_REY, H_ORN, H_GEM1, H_GEM2, H_N };
 static bars_handle_t held[H_N];
 static void strike_h(int slot, int inst, int part, float hz, float vel, float pan, uint32_t delay, uint32_t damp_after)
 {
@@ -655,13 +663,14 @@ static void elaborate(uint32_t off, int j, int c, int nx)
         int pick = GRID - (int)((float)GRID * (1.0f / 16.0f + x127(P_O_PICK) * 7.0f / 16.0f) + 0.5f);
         if (pick >= GRID)
             pick = GRID - 1;
+        /* (each damps the one before as it strikes, as a gendèr player's hands do: they do not pile up) */
         if (j == pick && !sparse(j, P_O_SPARSE))
-            strike_h(H_ORN, IN_GENDER, PART_KOT, pitch(fold(nx, lo * 2.0f)), 0.32f * lv * lvl(P_L_ORN), 0.3f, off, 0xFFFFFFFFu);
+            strike_h(H_ORN, IN_GENDER, PART_KOT, pitch(fold(nx, lo * 2.0f)), 0.32f * lv * lvl(P_L_ORN), 0.3f, off, 2205u);
         if (j == 0 && eng_w.p[P_O_OCT] > 1) {
             int g = fold(c, lo);
             float v = 0.22f * lv * x128(P_O_OCT) * 2.0f * lvl(P_L_ORN);
-            play(IN_GENDER, PART_KOT, pitch(g), v, 0.25f, off + 176u, 0);
-            play(IN_GENDER, PART_KOT, pitch(g + sc.n), v, 0.35f, off + 176u, 0);
+            strike_h(H_GEM1, IN_GENDER, PART_KOT, pitch(g), v, 0.25f, off + 176u, 2205u);
+            strike_h(H_GEM2, IN_GENDER, PART_KOT, pitch(g + sc.n), v, 0.35f, off + 176u, 2205u);
         }
     }
 }

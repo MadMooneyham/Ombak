@@ -28,6 +28,8 @@ typedef struct {
     float amp, k;                        /* the level now, its fall a sample */
     float a, astep;                      /* the level it rises to, a sample's rise (0: risen) */
     uint32_t att;                        /* samples of the rise left */
+    float bamp, bk, bstep;               /* a resonator's bloom on the same partial: its own level, fall, rise */
+    uint32_t batt;                       /* (sharing the carrier's sine: one evaluation for both) */
     float mph, minc, minc0, mi, mk;      /* the modulator: phase, inc, index (turns of phase), its fall */
 } bars_op_t;
 
@@ -39,6 +41,7 @@ typedef struct {
     float damp_k, gain;                  /* the damping's fall a sample; the voice's gain (1, falling once damped) */
     float gl, gr, xsend;                 /* its place within its part; its own extra send (a white key's SHIMMER) */
     float bph, binc;                     /* the ombak's beating: cos(2 pi bph), bph += b / 2 / SR */
+    float bcur, bstep;                   /* (it moves slowly: evaluated each 16 samples, a line between) */
     float glide, gk;                     /* the gong's pitch, from (1 + glide) down to 1 */
     float hamp2, hk2;                    /* the hum's fast exponential (subtracted: the swell) */
     float nz, nzk, nlp, nbp, nf, nq;     /* the mallet: its level, fall; the band-pass's state and coefficients */
@@ -77,4 +80,7 @@ void bars_bend(bars_t *b, bars_handle_t h, float beat, float pan, float gain, fl
  * send, mono); returns how many sounded */
 int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int n);
 int bars_active(const bars_t *b);
+/* the work: sine evaluations so far, by the half of the pool that made them (0: voices from BARS_VOICES / 2, the
+ * first core's; 1: below it, the second's) */
+extern volatile uint32_t bars_sines[2];
 const char *bars_inst_name(int inst);

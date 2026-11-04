@@ -1277,7 +1277,8 @@ static void draw_bench(void)
     if (engine_load_testing())
         cv_text(6, 1, &FONT_XS, "LOAD TEST", C_AMB);
     else {
-        put_s(put_i(put_s(put_s(b, bench.two_cores ? "2 CORES, " : "1 CORE, "), ""), bench.voices), " VOICES");
+        put_s(put_i(put_s(put_i(put_s(put_i(put_s(b, bench.two_cores ? "2 CORES " : "1 CORE "), bench.voices), " VOICES "),
+                                bench.ksines[0]), "/"), bench.ksines[1]), "K SIN");
         cv_text(6, 1, &FONT_XS, b, C_GRAY);
     }
     text_r(146, 1, &FONT_XS, "AVG %", C_DIM);

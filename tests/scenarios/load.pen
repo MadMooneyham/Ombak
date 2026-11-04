@@ -1,0 +1,46 @@
+# How hard the voices work, played hard: semar pegulingan, the density up, every part in, a melody led
+# quickly. The simulator's timing is this computer's, so the numbers compare builds, not the FM-1
+wait 300
+turn K2 30
+wait 100
+key b9 down
+key b9 up
+tap SEQ
+tapkey w0
+wait 700
+tapkey w3
+wait 700
+tapkey w5
+wait 700
+tapkey w2
+wait 700
+tapkey w7
+wait 700
+tapkey w4
+wait 700
+tapkey w8
+wait 700
+tapkey w1
+wait 700
+tapkey w6
+wait 700
+tapkey w9
+wait 700
+tapkey w3
+wait 700
+tapkey w5
+wait 700
+tapkey w0
+wait 3000
+expect voices >0
+expect bench_avg1 >-1
+expect bench_avg2 >-1
+expect bench_peak1 >-1
+expect bench_peak2 >-1
+expect bench_avg6 >-1
+expect bench_avg7 >-1
+expect ksines1 >-1
+expect ksines2 >-1
+wait 2000
+expect voices >0
+expect clips 0

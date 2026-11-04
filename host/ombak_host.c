@@ -499,7 +499,10 @@ static int expect(const char *what, const char *val)
         got = cfg.autoplay;
     else if (!strcmp(what, "home"))
         got = cfg.home;
-    else if (!strcmp(what, "bench")) {
+    else if (!strncmp(what, "ksines", 6)) {         /* ksinesC: the voices' sine evaluations last second, thousands, core C (1, 2) */
+        engine_bench(&b);
+        got = b.ksines[(atoi(what + 6) - 1) & 1];
+    } else if (!strcmp(what, "bench")) {
         got = engine_bench(&b) != 0;
     } else if (!strncmp(what, "bench_peak", 10) || !strncmp(what, "bench_avg", 9)) {
         int k = atoi(what + (what[6] == 'p' ? 10 : 9));

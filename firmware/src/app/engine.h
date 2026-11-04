@@ -122,6 +122,7 @@ typedef struct {
     uint16_t avg[ST_N], peak[ST_N];
     uint32_t blocks;
     uint8_t two_cores, voices;
+    uint16_t ksines[2];                  /* the voices' sine evaluations that second, thousands: core 1's, core 2's */
 } bench_t;
 uint32_t engine_bench(bench_t *out);
 const char *engine_stage_name(int st);

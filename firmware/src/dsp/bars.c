@@ -89,23 +89,33 @@ void bars_init(bars_t *b)
     b->cap = BARS_VOICES;
 }
 
-static int pick(bars_t *b)                       /* a free voice (while fewer than cap sound), else the quietest */
+/* a free voice (while fewer than cap sound) in the half of the pool with fewer sounding, so the two cores share
+ * the work; else the quietest */
+static int pick(bars_t *b)
 {
-    int i, q = 0, on = 0, free_v = -1;
+    int i, q = 0, on[2] = {0, 0}, free_v[2] = {-1, -1}, h;
     float lo = 1e30f;
     for (i = 0; i < BARS_VOICES; i++) {
+        h = i >= BARS_VOICES / 2;
         if (!b->v[i].on) {
-            if (free_v < 0)
-                free_v = i;
+            if (free_v[h] < 0)
+                free_v[h] = i;
             continue;
         }
-        on++;
+        on[h]++;
         if (b->v[i].level < lo) {
             lo = b->v[i].level;
             q = i;
         }
     }
-    return free_v >= 0 && on < b->cap ? free_v : on ? q : 0;
+    if (on[0] + on[1] < b->cap) {
+        h = on[1] < on[0];
+        if (free_v[h] >= 0)
+            return free_v[h];
+        if (free_v[!h] >= 0)
+            return free_v[!h];
+    }
+    return on[0] + on[1] ? q : 0;
 }
 
 bars_handle_t bars_strike(bars_t *b, const bars_strike_t *s)
@@ -134,34 +144,56 @@ bars_handle_t bars_strike(bars_t *b, const bars_strike_t *s)
     v->binc = s->beat * sp->ombak * 0.5f / BARS_SR;
     v->glide = sp->glide;
     v->gk = fm_expf(-256.0f / (0.13f * BARS_SR));
-    v->nops = sp->nops;
-    for (k = 0; k < sp->nops; k++) {
-        const op_spec_t *o = &sp->op[k];
-        bars_op_t *p = &v->op[k];
-        float a = g * o->a * (o->att >= 0.05f ? s->bloom : 1.0f) * (gong ? s->body : 1.0f);
-        uint32_t att = (uint32_t)(o->att * BARS_SR);
-        p->ph = 0.0f;
-        p->inc = p->inc0 = s->hz * o->r / BARS_SR;
-        p->k = fall(o->d * ring);
-        p->a = a;
-        p->att = att ? att : 1u;
-        p->astep = a / (float)p->att;
-        p->amp = 0.0f;
-        p->mph = 0.0f;
-        p->minc = p->minc0 = s->hz * o->r * o->mr / BARS_SR;
-        p->mi = o->mr > 0.0f ? o->mi * s->bright * (1.0f / FM_TWO_PI) : 0.0f;
-        p->mk = o->md > 0.0f ? fall(o->md) : 0.0f;
+    {
+        int n = 0, j;
+        float rat[BARS_OPS];
+        for (k = 0; k < sp->nops; k++) {
+            const op_spec_t *o = &sp->op[k];
+            bars_op_t *p;
+            float a = g * o->a * (o->att >= 0.05f ? s->bloom : 1.0f) * (gong ? s->body : 1.0f);
+            uint32_t att = (uint32_t)(o->att * BARS_SR);
+            for (j = 0; j < n; j++)              /* a bloom on a partial already sounding: its second envelope */
+                if (o->mr <= 0.0f && rat[j] == o->r)
+                    break;
+            if (j < n) {
+                p = &v->op[j];
+                p->batt = att ? att : 1u;
+                p->bstep = a / (float)p->batt;
+                p->bamp = 0.0f;
+                p->bk = fall(o->d * ring);
+                continue;
+            }
+            rat[n] = o->r;
+            p = &v->op[n++];
+            p->bamp = p->bstep = 0.0f;
+            p->batt = 0;
+            p->bk = 1.0f;
+            p->inc = p->inc0 = s->hz * o->r / BARS_SR;
+            p->k = fall(o->d * ring);
+            p->a = a;
+            p->att = att ? att : 1u;
+            p->astep = a / (float)p->att;
+            p->amp = 0.0f;
+            p->mph = 0.0f;
+            p->minc = p->minc0 = s->hz * o->r * o->mr / BARS_SR;
+            p->mi = o->mr > 0.0f ? o->mi * s->bright * (1.0f / FM_TWO_PI) : 0.0f;
+            p->mk = o->md > 0.0f ? fall(o->md) : 0.0f;
+        }
+        v->nops = (uint8_t)n;
     }
+    v->bcur = 1.0f;
+    v->bstep = 0.0f;
     v->hum = sp->hum_a > 0.0f;
     if (v->hum) {                                /* the hum: amp - hamp2, a rise then a long fall */
-        bars_op_t *p = &v->op[k];
+        bars_op_t *p = &v->op[v->nops];
         float a = g * sp->hum_a * s->hum, rise = sp->hum_rise * s->swell;
         p->ph = 0.0f;
         p->inc = p->inc0 = s->hz / BARS_SR;
         p->amp = p->a = a;
         p->k = fm_expf(-6.9077553f / (sp->hum_d * ring * BARS_SR));
-        p->att = 0;
-        p->astep = 0.0f;
+        p->att = p->batt = 0;
+        p->astep = p->bamp = p->bstep = 0.0f;
+        p->bk = 1.0f;
         p->mi = 0.0f;
         p->minc = p->minc0 = 0.0f;
         v->hamp2 = a;
@@ -211,9 +243,11 @@ static inline float rnd(uint32_t *s)
     return (float)(int32_t)*s * (1.0f / 2147483648.0f);
 }
 
+volatile uint32_t bars_sines[2];
 int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int n)
 {
     int vi, sounded = 0;
+    uint32_t sines = 0;
     uint32_t rng = b->rng ^ (uint32_t)lo * 2654435761u;
     for (vi = lo; vi < hi; vi++) {
         bars_voice_t *v = &b->v[vi];
@@ -237,24 +271,34 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
             }
             v->glide *= v->gk;
         }
-        for (k = 0; k < v->nops; k++)            /* the carriers still sounding */
-            if (v->op[k].amp > 1e-5f || v->op[k].att)
-                act[na++] = &v->op[k];
+        for (k = 0; k < v->nops; k++) {          /* the carriers still sounding (above -80 dB) */
+            bars_op_t *o = &v->op[k];
+            if (o->amp + o->bamp > 1e-4f || o->att || o->batt)
+                act[na++] = o;
+            if (o->mi < 2e-4f)                   /* (a modulator that has fallen silent stops) */
+                o->mi = 0.0f;
+        }
         L = bus[v->part][0];
         R = bus[v->part][1];
+        {
+            uint32_t per = (uint32_t)na + (uint32_t)v->hum;   /* (the carriers, the hum; the beating each 16 samples) */
+            for (k = 0; k < na; k++)
+                per += act[k]->mi > 0.0f;
+            sines += per * (uint32_t)(n - start) + (uint32_t)(n - start + 15) / 16u;
+        }
         for (i = start; i < n; i++) {
             float s = 0.0f;
             for (k = 0; k < na; k++) {
                 bars_op_t *o = act[k];
                 float m = 0.0f;
-                if (o->mi > 1e-5f) {
+                if (o->mi > 0.0f) {
                     m = sin_t(o->mph) * o->mi;
                     o->mph += o->minc;
                     if (o->mph >= 1.0f)
                         o->mph -= 1.0f;
                     o->mi *= o->mk;
                 }
-                s += sin_t(o->ph + m) * o->amp;
+                s += sin_t(o->ph + m) * (o->amp + o->bamp);   /* (the carrier and its bloom: one sine) */
                 o->ph += o->inc;
                 if (o->ph >= 1.0f)
                     o->ph -= 1.0f;
@@ -263,6 +307,12 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
                     o->att--;
                 } else {
                     o->amp *= o->k;
+                }
+                if (o->batt) {
+                    o->bamp += o->bstep;
+                    o->batt--;
+                } else {
+                    o->bamp *= o->bk;
                 }
             }
             if (v->hum) {                        /* the hum, swelling: the slow fall less the fast one */
@@ -281,7 +331,12 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
                 s += v->nbp * v->nq;
                 v->nz *= v->nzk;
             }
-            s *= sin_t(v->bph + 0.25f) * v->gain;   /* the ombak: the pair's beating */
+            if (!(i & 15) || i == start) {       /* the ombak, the pair's beating: slow, so a line each 16 samples */
+                float to = sin_t(v->bph + 16.0f * v->binc + 0.25f);
+                v->bstep = (to - v->bcur) * (1.0f / 16.0f);
+            }
+            s *= v->bcur * v->gain;
+            v->bcur += v->bstep;
             v->bph += v->binc;
             if (v->bph >= 1.0f)
                 v->bph -= 1.0f;
@@ -291,10 +346,11 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
                 v->damp_in--;
             L[i] += s * v->gl;
             R[i] += s * v->gr;
-            xs[i] += s * v->xsend;
+            if (v->xsend != 0.0f)
+                xs[i] += s * v->xsend;
         }
         for (k = 0; k < v->nops; k++)
-            lvl += v->op[k].amp + (float)(v->op[k].att != 0) * v->op[k].a;
+            lvl += v->op[k].amp + v->op[k].bamp + (float)(v->op[k].att != 0 || v->op[k].batt != 0) * v->op[k].a;
         if (v->hum)
             lvl += v->op[v->nops].amp;
         lvl = lvl * v->gain + v->nz;
@@ -303,6 +359,7 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
             v->on = 0;
         for (k = 0; k < v->nops; k++) {          /* (no denormals in the falls) */
             v->op[k].amp = fm_flush(v->op[k].amp);
+            v->op[k].bamp = fm_flush(v->op[k].bamp);
             v->op[k].mi = fm_flush(v->op[k].mi);
         }
         v->nlp = fm_flush(v->nlp);
@@ -310,6 +367,7 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
     }
     if (lo == 0)                                 /* (the halves run on two cores: one keeps the seed) */
         b->rng = rng;
+    bars_sines[lo == 0] += sines;
     return sounded;
 }
 
