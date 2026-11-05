@@ -44,7 +44,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          # the newest published release, a pre-release too (gh release view takes only "latest", which never
+          # is a pre-release: Ombak's betas)
+          tag=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 1 --json tagName -q '.[0].tagName')
+          test -n "$tag" || { echo "no published release"; exit 1; }
           gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*.fwsc' --dir build/release
           echo "VERSION=${tag#v}" >> "$GITHUB_ENV"
       - name: The site
