@@ -315,6 +315,80 @@ int engine_load_testing(void) { return testing; }
 static uint8_t midi_ch = 1;
 void engine_midi_ch(int ch) { midi_ch = (uint8_t)ch; }
 
+/* ---------------------------------------------------------- MIDI clock --- */
+/* 24 ticks a core beat. Out: while the cycle runs (and no clock is followed), the ticks spread over each beat as
+ * it is played (the breath and the ending's slowing in them), Start and Stop with the cycle. In: the ticks carry
+ * the time they came (usb.c, midi_uart.c: Penumbra's stamps); the tempo is the span of the last two beats' of
+ * them, and each beat's length is nudged by how far the cycle is from the ticks' count, so the cycle stays in
+ * phase (a beat at most half as long again or as short). Half a second without a tick: Ombak's own tempo again */
+#define CLK_STAMP_HZ 5859.375f
+#define CLK_SPAN 48u
+static uint8_t clk_out = 1, clk_in = 1, note_send;
+void engine_midi_opts(int clock_out, int clock_in, int n_out)
+{
+    clk_out = (uint8_t)(clock_out != 0);
+    clk_in = (uint8_t)(clock_in != 0);
+    note_send = (uint8_t)(n_out != 0);
+}
+static struct {
+    uint16_t stamp[CLK_SPAN + 1u];
+    uint8_t n, at;
+    uint32_t since;                              /* samples since the last tick */
+    float bpm, period;                           /* the clock's tempo; samples a tick */
+    uint32_t count;                              /* ticks since the cycle started */
+    uint8_t ext;                                 /* following now */
+    float next, step;                            /* out: the next tick (samples into the block), apart */
+    uint8_t left;                                /* out: ticks left in this beat */
+} clk = {{0}, 0, 0, 0xFFFFFFFFu, 60.0f, 1837.5f, 0, 0, 0.0f, 0.0f, 0};
+int engine_following(void) { return clk.ext; }
+static void midi_send(uint32_t st, uint32_t d1, uint32_t d2)
+{
+    plat_midi_out((st >> 4 == 0xFu ? 0xFu : st >> 4) | st << 8 | d1 << 16 | d2 << 24);
+}
+static void clk_tick_in(uint32_t pkt)
+{
+    const uint32_t ring = CLK_SPAN + 1u;
+    if (!clk_in)
+        return;
+    if ((pkt & 0xF0u) == 0x10u) {                /* stamped: the tempo over the span */
+        uint16_t s = (uint16_t)(pkt >> 16);
+        if (clk.n && (uint16_t)(s - clk.stamp[(clk.at + ring - 1u) % ring]) > (uint16_t)(CLK_STAMP_HZ / 2.0f))
+            clk.n = 0;
+        clk.stamp[clk.at] = s;
+        clk.at = (uint8_t)((clk.at + 1u) % ring);
+        if (clk.n < ring)
+            clk.n++;
+        if (clk.n >= 3u) {
+            uint16_t first = clk.stamp[(clk.at + ring - clk.n) % ring];
+            float per = (float)(uint16_t)(s - first) / (float)(clk.n - 1u) * (SR / CLK_STAMP_HZ);
+            if (per > 1.0f)
+                clk.period = per;
+        }
+    } else if (clk.since > 0u && clk.since < (uint32_t)SR) {   /* not: the smoothed spacing, to a block */
+        clk.period += ((float)clk.since - clk.period) * 0.125f;
+    }
+    clk.bpm = fm_clampf(SR * 60.0f / (24.0f * clk.period), 3.0f, 300.0f);
+    clk.since = 0;
+    clk.ext = 1;
+    clk.count++;
+}
+static void clk_block(uint32_t n)                /* the time since the last tick; gone half a second: our own */
+{
+    clk.since = clk.since + n < clk.since ? 0xFFFFFFFFu : clk.since + n;
+    if (clk.ext && clk.since > (uint32_t)SR / 2u) {
+        clk.ext = 0;
+        clk.n = 0;
+    }
+}
+static void clk_emit(float upto)                 /* out: the ticks before upto */
+{
+    while (clk.left && clk.next < upto) {
+        midi_send(0xF8u, 0, 0);
+        clk.next += clk.step;
+        clk.left--;
+    }
+}
+
 /* ---------------------------------------------------------- the scale --- */
 static g_scale_t sc;
 static int sc_t = -1, sc_m = -1;
@@ -620,7 +694,17 @@ static void begin_beat(uint32_t off)
     }
     p = (float)(pos + 1) / (float)len;
     d = 60.0f / fm_maxf(eng_bpm_now, 2.0f) * (1.0f + x127(P_BREATH) * 0.9f * p * p * p * p) * cy.end_mul;
+    if (clk.ext) {                               /* a clock leads: its tempo, the beat nudged into phase with it */
+        float err = (float)clk.count - 1.0f + fm_minf((float)clk.since / clk.period, 1.0f) - 24.0f * (float)cy.beat_no;
+        eng_bpm_now = clk.bpm;
+        d = clk.period * fm_clampf(24.0f - 0.5f * err, 12.0f, 36.0f) / SR;
+    }
     cy.dur = d * SR;
+    if (clk_out && !clk.ext) {                   /* our clock out: this beat's ticks */
+        clk.next = (float)off;
+        clk.step = cy.dur / 24.0f;
+        clk.left = final ? 1u : 24u;
+    }
     cy.dyn = (1.0f + x127(P_BREATH) * (0.5f * fm_sin_turns(0.5f * p) - 0.25f)) * swell_now;
     cy.fade = eng_ending ? fm_maxf(0.2f, 1.0f - (float)cy.end_beats * x128(P_E_THIN) * 0.16f) : 1.0f;
     /* the cycle's instruments at their places (the ending's last: the gong) */
@@ -656,6 +740,9 @@ static void begin_beat(uint32_t off)
         eng_ending = 0;
         cy.end_mul = 1.0f;
         eng_pos = 0;
+        clk_emit((float)off + 1.0f);
+        if (clk_out && !clk.ext)
+            midi_send(0xFCu, 0, 0);
     }
 }
 
@@ -771,8 +858,10 @@ static void schedule(uint32_t n)
         return;
     while (eng_running && cy.next_off < (float)n) {
         uint32_t off = (uint32_t)cy.next_off;
-        if (cy.j == 0)
+        if (cy.j == 0) {
+            clk_emit((float)off);
             begin_beat(off);
+        }
         if (!eng_running)
             break;
         if (core_c != NONE)
@@ -786,6 +875,8 @@ static void schedule(uint32_t n)
         }
     }
     cy.next_off -= (float)n;
+    clk_emit((float)n);
+    clk.next -= (float)n;
     eng_next = (int16_t)(eng_running ? next_core() : NONE);
 }
 
@@ -823,14 +914,33 @@ static void tone(int k, int i, float vel)
             core_c = eng_core = (int16_t)i;
     }
 }
+/* MIDI NOTES OUT: the FM-1's keys as MIDI in takes them (a tone the white key counted from middle C; the gongs
+ * C#, D#, F#, G#, A# above it) */
+static uint8_t key_note[16];
+static uint8_t tone_note(int i)
+{
+    static const uint8_t SEMI[7] = {0, 2, 4, 5, 7, 9, 11};
+    int o = i >= 0 ? i / 7 : -((-i + 6) / 7), n = 60 + 12 * o + SEMI[i - 7 * o];
+    return (uint8_t)(n < 0 ? 0 : n > 127 ? 127 : n);
+}
+static void note_out(int on, uint32_t note, uint32_t vel)
+{
+    if (note_send && midi_ch)
+        midi_send((on ? 0x90u : 0x80u) | (midi_ch - 1u), note, on ? vel : 0u);
+}
 static void white(int k, int down)
 {
     if (k < 0 || k > 15)
         return;
-    if (!down)
+    if (!down) {
         white_down &= ~(1u << k);
-    else
-        tone(k, k + oct * sc.n, 1.0f);
+        note_out(0, key_note[k], 0);
+    } else {
+        int i = k + oct * sc.n;
+        tone(k, i, 1.0f);
+        key_note[k] = tone_note(i);
+        note_out(1, key_note[k], 100);
+    }
 }
 
 /* MIDI in, on SYSTEM's channel: a white key (any octave: middle C the first tone, each white key the next tone)
@@ -839,11 +949,20 @@ static void white(int k, int down)
  * OMBAK, DENSITY, SPACE, BREATH (and CC 1 DENSITY), CC 24 the tempo; a program change the gamelan at the next
  * gong; Start and Stop the cycle (any channel). */
 static void run(int on);
-static void midi_in(uint32_t s, uint32_t d1, uint32_t d2)
+static void midi_in(uint32_t pkt)
 {
     static const int8_t WHITE_OF[12] = {0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6};
     static const int8_t GONG_OF[12] = {-1, G_GONG, -1, G_LANANG, -1, -1, G_KEMPUR, -1, G_KEMONG, -1, G_KAJAR, -1};
-    if (s == 0xFA || s == 0xFB) {
+    uint32_t s = pkt >> 8 & 0xFFu, d1 = pkt >> 16 & 0xFFu, d2 = pkt >> 24 & 0xFFu;
+    if (s == 0xF8) {
+        clk_tick_in(pkt);
+        return;
+    }
+    if (s == 0xFA || s == 0xFB) {                /* (with FOLLOW CLOCK IN, its clock is expected: none echoed) */
+        if (clk_in) {
+            clk.ext = 1;
+            clk.since = 0;
+        }
         run(1);
         return;
     }
@@ -905,8 +1024,15 @@ static void run(int on)
         eng_ending = 0;
         eng_bpm_now = target_bpm();
         loop_i = 0;
+        clk.count = 0;
+        clk.left = 0;
+        if (clk_out && !clk.ext)
+            midi_send(0xFAu, 0, 0);
         eng_running = 1;
     } else if (!on) {
+        if (eng_running && clk_out && !clk.ext)
+            midi_send(0xFCu, 0, 0);
+        clk.left = 0;
         eng_running = 0;
         eng_ending = 0;
         cy.end_mul = 1.0f;
@@ -959,7 +1085,14 @@ static void drain(void)
         case C_RUN: run((int)a); break;
         case C_WHITE: white((int)a, (int)b); break;
         case C_OCT: oct = (int8_t)((int)v - 8); break;
-        case C_GONG: if (a < G_N) gong((int)a, 0, a == G_KAJAR ? 0.9f : 1.0f); break;
+        case C_GONG:
+            if (a < G_N) {
+                static const uint8_t GONG_NOTE[G_N] = {61, 63, 66, 68, 70};
+                gong((int)a, 0, a == G_KAJAR ? 0.9f : 1.0f);
+                note_out(1, GONG_NOTE[a], 100);
+                note_out(0, GONG_NOTE[a], 0);
+            }
+            break;
         case C_END: if (eng_running && !eng_ending) { eng_ending = 1; cy.end_beats = cy.end_gongs = 0; } break;
         case C_PMODE: eng_pend_mode = (int8_t)((int)a - 1); break;
         case C_PENS: eng_pend_ens = (int8_t)((int)a - 1); break;
@@ -985,7 +1118,7 @@ static void drain(void)
     }
     cq_r = r;
     while (guard-- && plat_midi_in(&pkt))
-        midi_in(pkt >> 8 & 0xFFu, pkt >> 16 & 0xFFu, pkt >> 24 & 0xFFu);
+        midi_in(pkt);
 }
 
 /* ------------------------------------------------------------------ output --- */
@@ -1096,6 +1229,7 @@ void engine_render(int32_t *out_lr, uint32_t n)
     /* CTRL: commands, the motion, the cycle's strokes for this block */
     economy_block();
     scale_check();
+    clk_block(n);
     drain();
     motion(n);
     if (!eng_running)

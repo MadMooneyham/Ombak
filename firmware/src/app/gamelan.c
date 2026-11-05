@@ -11,13 +11,16 @@
 #include "../dsp/fastmath.h"
 
 static const char *const BALI[5] = {"DING", "DONG", "DENG", "DUNG", "DANG"};
+/* the gendèr wayang's lowest key is dong, its tones sung dong, deng, dung, dang, ding (Gold, Gamelan Gender
+ * Wayang of Bali: Form and Style, Wesleyan): the measured sets start from the instrument's lowest */
+static const char *const GENDER[5] = {"DONG", "DENG", "DUNG", "DANG", "DING"};
 static const char *const ANGKLUNG[4] = {"DONG", "DENG", "DUNG", "DANG"};
 static const char *const JAVA_SL[5] = {"1", "2", "3", "5", "6"};
 
 const g_tuning_t G_TUNING[G_TUNINGS] = {
-    {"GENDER WAYANG, PELIATAN", FAM_SLENDRO, 5, 0, 305.5f, {0, 235.419f, 453.560f, 704.786f, 927.453f}, BALI},
-    {"GENDER WAYANG, UBUD", FAM_SLENDRO, 5, 0, 347.0f, {0, 193, 457, 687, 919}, BALI},
-    {"LOW GENDER, TABANAN", FAM_SLENDRO, 5, 0, 179.0f, {0, 292.926f, 507.690f, 762.150f, 1005.735f}, BALI},
+    {"GENDER WAYANG, PELIATAN", FAM_SLENDRO, 5, 0, 305.5f, {0, 235.419f, 453.560f, 704.786f, 927.453f}, GENDER},
+    {"GENDER WAYANG, UBUD", FAM_SLENDRO, 5, 0, 347.0f, {0, 193, 457, 687, 919}, GENDER},
+    {"LOW GENDER, TABANAN", FAM_SLENDRO, 5, 0, 179.0f, {0, 292.926f, 507.690f, 762.150f, 1005.735f}, GENDER},
     {"ANGKLUNG, SANGSIT", FAM_SLENDRO, 5, 0, 294.0f, {0, 231.174f, 457.834f, 684.199f, 922.793f}, BALI},
     {"ANGKLUNG, MAS", FAM_SLENDRO, 4, 0, 410.0f, {0, 232.757f, 408.133f, 715.973f}, ANGKLUNG},
     {"KANYUT MESEM SLENDRO", FAM_SLENDRO, 5, 0, 291.0f, {0, 222.974f, 475.590f, 711.842f, 937.091f}, JAVA_SL},

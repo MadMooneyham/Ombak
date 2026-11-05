@@ -485,15 +485,20 @@ static void er_turn(int r, int e)
 }
 
 /* SYSTEM */
-enum { R_HOME, R_SLEEP, R_AUTOPLAY, R_MIDI, R_OUTLOUD, R_USBFULL, R_CORES, R_RESET, R_ABOUT, NROWS };
-static const char *const ROW_N[NROWS] = {"HOME", "SLEEP", "PLAY AT POWER-ON", "MIDI CHANNEL", "OUTPUT LEVEL",
-                                         "USB AUDIO", "2ND CORE", "RESET SOUND", "ABOUT"};
+enum { R_HOME, R_SLEEP, R_AUTOPLAY, R_MIDI, R_CLKIN, R_CLKOUT, R_NOTESOUT, R_OUTLOUD, R_USBFULL, R_CORES, R_RESET,
+       R_ABOUT, NROWS };
+static const char *const ROW_N[NROWS] = {"HOME", "SLEEP", "PLAY AT POWER-ON", "MIDI CHANNEL", "FOLLOW CLOCK IN",
+                                         "MIDI CLOCK OUT", "MIDI NOTES OUT", "OUTPUT LEVEL", "USB AUDIO", "2ND CORE",
+                                         "RESET SOUND", "ABOUT"};
 static void row_text(int r, char *b)
 {
     switch (r) {
     case R_HOME: put_s(b, cfg.home ? "THE GONG" : "THE ONGKARA"); break;
     case R_AUTOPLAY: put_s(b, cfg.autoplay ? "ON" : "OFF"); break;
     case R_MIDI: if (cfg.midi_ch) put_i(b, cfg.midi_ch); else put_s(b, "OFF"); break;
+    case R_CLKIN: put_s(b, !cfg.clock_in ? "OFF" : engine_following() ? "FOLLOWING" : "ON"); break;
+    case R_CLKOUT: put_s(b, cfg.clock_out ? "ON" : "OFF"); break;
+    case R_NOTESOUT: put_s(b, cfg.notes_out ? "ON" : "OFF"); break;
     case R_SLEEP:
         if (ui.sleep)
             put_s(put_i(b, SLEEP_MIN[ui.sleep % SLEEPS]), " MIN");
@@ -514,6 +519,9 @@ static void row_set(int r, int e)                 /* SEL (e 1) or a knob turned 
     case R_HOME: cfg.home ^= 1u; break;
     case R_AUTOPLAY: cfg.autoplay ^= 1u; break;
     case R_MIDI: cfg.midi_ch = (uint8_t)wrap_i(cfg.midi_ch + (e < 0 ? -1 : 1), 17); break;   /* 0 off, 1 .. 16 */
+    case R_CLKIN: cfg.clock_in ^= 1u; break;
+    case R_CLKOUT: cfg.clock_out ^= 1u; break;
+    case R_NOTESOUT: cfg.notes_out ^= 1u; break;
     case R_SLEEP:                                 /* (from now; not saved) */
         ui.sleep = (uint8_t)wrap_i(ui.sleep + (e < 0 ? -1 : 1), SLEEPS);
         ui.sleep_at = plat_ms() + (uint32_t)SLEEP_MIN[ui.sleep] * 60000u;
@@ -814,6 +822,8 @@ static void algo_turn(int e)
         say_knob(&PAGE[ui.page].algo, 0);
     } else if (ui.view == V_EDIT) {
         er_turn(ui.erow, e);
+    } else if (engine_following()) {
+        warn("THE MIDI CLOCK LEADS THE TEMPO", 0);
     } else {                                      /* the tempo, in steps of 2.8% (the slow end as fine as the fast) */
         eng_w.p[P_TEMPO] = (uint8_t)clamp_i(eng_w.p[P_TEMPO] + e, 0, 127);
         changed();

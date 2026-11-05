@@ -39,6 +39,10 @@ The gong forms: gilak as the University of Guelph and University of Waterloo tea
 (Dewa Made Suparta and Maisie Sum; *Music of the World*, openwa.pressbooks.pub), and the Javanese lancaran,
 ketawang and ladrang as Wikipedia's *Colotomy* gives them. Facts, not text, are taken from both.
 
+The gendèr wayang's tone names from its lowest key (dong) follow *Gamelan Gender Wayang of Bali: Form and Style*
+(Wesleyan University); the semar pagulingan of Banjar Tampakgangsul is identified from the City of Denpasar's
+culture pages (culture.denpasarkota.go.id).
+
 ## Respect
 
 Ombak is an instrument inspired by gamelan, not a gamelan. The Ongkara is a sacred syllable in Balinese

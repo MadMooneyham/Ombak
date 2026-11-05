@@ -22,7 +22,10 @@ typedef struct {
     uint8_t usb_full;                    /* 1: USB audio at full level, MASTER for the FM-1's own outputs */
     uint8_t autoplay;                    /* 1: the cycle starts at power-on */
     uint8_t home;                        /* HOME's heart: 0 the Ongkara, 1 the gong */
-    uint8_t rsv[26];
+    uint8_t clock_out;                   /* 1: MIDI clock and Start / Stop out while the cycle runs */
+    uint8_t clock_in;                    /* 1: an incoming MIDI clock leads the tempo */
+    uint8_t notes_out;                   /* 1: the FM-1's keys go out as MIDI notes */
+    uint8_t rsv[23];
 } settings_t;
 
 extern settings_t cfg;

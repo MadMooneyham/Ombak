@@ -449,6 +449,21 @@ static int expect(const char *what, const char *val)
     bench_t b;
     if (!strcmp(what, "playing"))
         got = eng_running;
+    else if (!strcmp(what, "clock_out"))            /* MIDI clock ticks sent */
+        got = (int)clock_out_count;
+    else if (!strcmp(what, "starts_out"))
+        got = (int)starts_out;
+    else if (!strcmp(what, "stops_out"))
+        got = (int)stops_out;
+    else if (!strcmp(what, "notes_out")) {          /* note-ons sent, every channel */
+        int ch;
+        got = 0;
+        for (ch = 0; ch < 17; ch++)
+            got += (int)notes_out[ch];
+    } else if (!strcmp(what, "note_out_last"))
+        got = note_out_last;
+    else if (!strcmp(what, "following"))
+        got = engine_following();
     else if (!strcmp(what, "view"))                 /* ui.c V_*: 0 HOME, 1 SHAPE, 2 GAMELAN, 3 FX, 4 LIBRARY, 5 SYSTEM, 6 BENCH */
         got = ui.view;
     else if (!strcmp(what, "page"))

@@ -118,6 +118,8 @@ int engine_load_testing(void);
 void engine_out_loud(int on);
 void engine_usb_full(int on);
 void engine_midi_ch(int ch);
+void engine_midi_opts(int clock_out, int clock_in, int notes_out);
+int engine_following(void);              /* 1: an incoming MIDI clock leads the tempo now */
 uint32_t engine_quiet_ms(void);
 
 /* --------------------------------------------------------------- the benchmark --- */

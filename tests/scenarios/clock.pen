@@ -1,0 +1,50 @@
+# MIDI clock out (24 a beat, Start and Stop with the cycle), a clock in leading the tempo and the cycle kept in
+# phase with it, back to Ombak's own when it goes; MIDI NOTES OUT for the keys and the gongs by hand
+wait 300
+tap SEQ
+wait 6000
+expect starts_out 1
+expect clock_out >80
+expect clock_out <130
+tap SEQ
+wait 300
+expect stops_out 1
+wait 6000
+# a DAW at 120: its Start, then its clock
+clockin 120 12000
+midi FA 00 00
+wait 8250
+expect following 1
+expect bpm >117
+expect bpm <123
+expect cycles 1
+expect pos 0
+expect starts_out 1
+midi FC 00 00
+wait 5000
+expect following 0
+expect playing 0
+expect stops_out 1
+# the keys out
+tap GLO
+wait 100
+turn SELECT 6
+tap SEL
+wait 100
+tap HOME
+tapkey w2
+wait 100
+expect notes_out 1
+expect note_out_last 64
+tapkey b0
+wait 100
+expect notes_out 2
+expect note_out_last 61
+# a minute at 100 with BREATH up (its beats would swell and slow): still in phase
+turn K4 40
+clockin 100 62000
+midi FA 00 00
+wait 60300
+expect following 1
+expect cycles 6
+expect pos 4

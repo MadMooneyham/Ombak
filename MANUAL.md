@@ -1,6 +1,6 @@
 # Ombak manual
 
-Ombak 0.1.4 for the M-VAVE FM-1, by Lunar Eclipse Forge.
+Ombak 0.1.5 for the M-VAVE FM-1, by Lunar Eclipse Forge.
 
 Ombak is an instrument inspired by the gamelan of Bali and Java. It is not a gamelan, and it does not
 pretend to be one. It plays measured tunings from real ensembles, and it builds its parts the way a gamelan
@@ -205,7 +205,12 @@ it.
 | GONG, PELIATAN | Five-tone pelog (McPhee) |
 | KANYUT MESEM PELOG | Java's seven-tone pelog: PATHET NEM, PATHET BARANG |
 
-The Balinese five-tone sets name their tones *ding, dong, deng, dung, dang*. The Javanese use numbers.
+The Balinese five-tone sets name their tones *ding, dong, deng, dung, dang*. On the gendèr wayang the lowest key
+is *dong*, so the three gendèr tunings run dong, deng, dung, dang, ding from the first white key, as the
+instrument does. The Javanese use numbers.
+
+SAIH PITU, TAMPAK GANGSUL is McPhee's measurement of the semar pagulingan of Banjar Tampakgangsul in Denpasar.
+That ensemble disbanded in 1940; its gamelan is played today by the sekaa of Pagan Klod.
 
 **The forms.** A form says which gong sounds where in the cycle.
 
@@ -274,7 +279,10 @@ kotekan style stay as they are. A/B lasts only this session.
 | HOME | THE ONGKARA, or THE GONG |
 | SLEEP | Off, or 20, 40, 60 or 90 minutes (below) |
 | PLAY AT POWER-ON | Starts the cycle when you switch on |
-| MIDI CHANNEL | MIDI in: 1-16, or off (section 11) |
+| MIDI CHANNEL | MIDI in and out: 1-16, or off (section 11) |
+| FOLLOW CLOCK IN | An incoming MIDI clock leads the tempo (FOLLOWING while it does) |
+| MIDI CLOCK OUT | Sends MIDI clock, Start and Stop while the cycle runs |
+| MIDI NOTES OUT | Sends the keys you play on the FM-1 as notes |
 | OUTPUT LEVEL | NORMAL, or LOUD (6 dB hotter) |
 | USB AUDIO | MASTER (follows the volume knob), or FULL level |
 | 2ND CORE | Uses the FM-1's second processor core; applies at the next power-on |
@@ -329,7 +337,19 @@ channel.
 | Start, Stop | The cycle |
 | CC 120, CC 123 | Everything you are playing is damped |
 
-Ombak doesn't send MIDI yet, or follow MIDI clock.
+**The clock.** A core beat is a quarter note: 24 MIDI clock ticks.
+
+- **FOLLOW CLOCK IN** (on as made): when a clock arrives, its tempo leads Ombak's, and each beat is nudged so the
+  cycle stays in phase with it. BREATH and the ending's slowing step aside while it leads, and ALGO says so.
+  Start runs the cycle from the gong, and Stop stops it. Half a second without a tick, and Ombak goes back to its
+  own tempo.
+- **MIDI CLOCK OUT** (on as made): while the cycle runs on its own tempo, Ombak sends its clock, with Start and
+  Stop. Its ticks follow every beat as it is played, so a DAW hears the breath and the ending slow down too.
+  Ombak never sends a clock while it follows one.
+
+**Notes out.** With MIDI NOTES OUT on, the keys you play on the FM-1 go out on the MIDI channel, mapped the way
+MIDI in reads them: the white keys as the tones counted from middle C, and the gongs struck by hand as C#, D#,
+F#, G# and A# above it. The cycle's own notes are not sent.
 
 ## 12. Cheat sheet
 

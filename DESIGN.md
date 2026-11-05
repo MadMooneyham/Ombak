@@ -123,8 +123,13 @@ prototype's answers, for David to listen to and overrule; the firmware follows w
   - White key 1 is always the mode's first tone (ding), placed between 130 and 260 Hz (105–210 for four
     tones), so 16 keys climb three octaves and a tone (four octaves with four tones).
 - **Still to check** (respect: names and forms right):
-  - which measured tone is *ding* in the slendro sets (the prototype assumes the lowest listed);
-  - the Scala file's "Tampak Gangsai" read as Tampak Gangsul, Denpasar;
+  - ~~which measured tone is *ding* in the slendro sets~~ (0.1.5): the gendèr wayang's lowest key is *dong*,
+    sung dong, deng, dung, dang, ding (*Gamelan Gender Wayang of Bali: Form and Style*, Wesleyan), so the three
+    gendèr sets name their lowest measured tone dong; the pitches are unchanged. Angklung Sangsit's five tones
+    keep ding first: no source found yet for its order;
+  - ~~the Scala file's "Tampak Gangsai"~~ (0.1.5): Banjar Tampakgangsul, Dangin Puri Kauh, Denpasar Utara, had a
+    sekaa semar pagulingan until 1940, within McPhee's years in Bali (1931–38); its gamelan went to the new
+    sekaa of Pagan Klod (Denpasar's culture site, culture.denpasarkota.go.id). The reading stands;
   - *ngubeng* / *ngembat* for the breathing knob: *ngubeng* is usually a static figuration around one tone,
     not a tempo, so the prototype says "breath" until the right words are found;
   - baro has several versions; the page uses one common one (3 4 5 7 1).
@@ -366,6 +371,22 @@ for a few more patterns, and the Penumbra eclipse gone from the boot screen.
   FX, not the gamelan, form or kotekan style. B starts as A.
 
 David on 0.1.4 (2026-11-05), flashed and tested on the FM-1: "It runs great. Sounds amazing."
+
+## 0.1.5: the MIDI clock, notes out, the names checked
+
+- **FOLLOW CLOCK IN** (on as made): the ticks' stamps (usb.c, midi_uart.c, as Penumbra's) time the tempo over
+  the last two beats' ticks; at each beat the cycle compares its beats with the ticks counted since it started
+  and nudges that beat's length by half the difference (a beat between half and one and a half times a tick
+  period of 24), so it stays in phase however BREATH would shape it. Start (or Continue) runs the cycle, Stop
+  stops it; with FOLLOW on, an incoming Start is never echoed. Half a second without a tick: Ombak's tempo.
+- **MIDI CLOCK OUT** (on as made): 24 ticks spread over each beat as it is played (the breath and the ending's
+  slowing in them), Start and Stop with the cycle (and at the ending's last gong); none while following.
+- **MIDI NOTES OUT** (off as made): the FM-1's white keys as MIDI in reads them (the tones counted in white keys
+  from middle C) and the gongs by hand (C#, D#, F#, G#, A# above middle C); the cycle's notes are not sent.
+- Settings saved by 0.1.4 load with the three new rows OFF (their bytes were reserved as zero).
+- Tested in the simulator (`tests/scenarios/clock.pen`): 97 ticks over four beats at 40, a DAW's 120 followed
+  to the BPM and the cycle on its gong after 16.5 beats, a minute at 100 with BREATH up still in phase, the
+  keys and gongs out.
 
 ## When the firmware starts: what comes from Penumbra
 

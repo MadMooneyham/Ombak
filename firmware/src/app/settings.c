@@ -18,6 +18,9 @@ void settings_defaults(void)
     cfg.midi_ch = 1;
     cfg.autoplay = 0;                            /* (Ombak waits for you: SEQ starts the cycle) */
     cfg.home = 0;
+    cfg.clock_out = 1;
+    cfg.clock_in = 1;
+    cfg.notes_out = 0;
 }
 
 int settings_load(void)
@@ -31,6 +34,9 @@ int settings_load(void)
     if (s.midi_ch > 16)
         s.midi_ch = 1;
     s.home &= 1u;
+    s.clock_out &= 1u;
+    s.clock_in &= 1u;
+    s.notes_out &= 1u;
     cfg = s;
     return 0;
 }
@@ -40,6 +46,7 @@ int settings_save(void) { return plat_store_save(OBJ_SET, &cfg, sizeof cfg); }
 void settings_apply(void)
 {
     engine_midi_ch(cfg.midi_ch);
+    engine_midi_opts(cfg.clock_out, cfg.clock_in, cfg.notes_out);
     engine_out_loud(cfg.out_loud);
     engine_usb_full(cfg.usb_full);
 }
