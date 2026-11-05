@@ -1,0 +1,99 @@
+# The knobs turned fast over a steady sound, each into its own recording (tests/knob_clicks.sh checks them):
+# a knob that jumps something in the audio path clicks
+wait 300
+# a long note and the space full of it
+tapkey w5
+wait 300
+wav home_k1.wav
+turn K1 20 15
+turn K1 -20 15
+wavstop
+tapkey w5
+wav home_k2.wav
+turn K2 20 15
+turn K2 -20 15
+wavstop
+tapkey w5
+wav home_k3.wav
+turn K3 20 15
+turn K3 -20 15
+wavstop
+tapkey w5
+wav home_k4.wav
+turn K4 20 15
+turn K4 -20 15
+wavstop
+tap FX
+wait 100
+tapkey w5
+wav fx_decay.wav
+turn K1 20 15
+turn K1 -20 15
+wavstop
+tapkey w5
+wav fx_size.wav
+turn K2 20 15
+turn K2 -20 15
+wavstop
+tapkey w5
+wav fx_shimmer.wav
+turn K3 20 15
+turn K3 -20 15
+wavstop
+tapkey w5
+wav fx_tone.wav
+turn K4 20 15
+turn K4 -20 15
+wavstop
+turn SELECT 1
+tapkey w5
+wav fx_motion.wav
+turn K1 20 15
+turn K1 -20 15
+wavstop
+tapkey w5
+wav fx_interval.wav
+turn K2 2 300
+turn K2 -2 300
+wavstop
+tapkey w5
+wav fx_lowcut.wav
+turn K3 20 15
+turn K3 -20 15
+wavstop
+tapkey w5
+wav fx_level.wav
+turn K4 20 15
+turn K4 -20 15
+wavstop
+tap ENV
+turn SELECT 6
+tapkey w5
+wav pan.wav
+turn K1 20 15
+turn K1 -20 15
+wavstop
+tap HOME
+press FX
+tapkey w5
+wav throw_shimmer.wav
+turn K1 20 15
+turn K1 -20 15
+wavstop
+tapkey w5
+wav throw_freeze.wav
+turn K2 20 15
+turn K2 -20 15
+wavstop
+tapkey w5
+wav throw_dip.wav
+turn K3 20 15
+turn K3 -40 15
+turn K3 20 15
+wavstop
+tapkey w5
+wav throw_hush.wav
+turn K4 20 15
+turn K4 -20 15
+wavstop
+release FX

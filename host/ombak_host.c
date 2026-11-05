@@ -485,6 +485,8 @@ static int expect(const char *what, const char *val)
         got = (int)(eng_swell * 100.0f);
     else if (!strcmp(what, "guard"))
         got = engine_guard_active();
+    else if (!strcmp(what, "economy"))
+        got = engine_economy();
     else if (!strcmp(what, "testing"))
         got = engine_load_testing();
     else if (!strcmp(what, "clips"))

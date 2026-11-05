@@ -517,9 +517,11 @@ static void save_now(void)
     if (a || b)
         warn("SAVE FAILED", 0);
 }
+/* a save waits until nothing has changed for 2 s and the sound has been silent for 1 s: writing the flash stops
+ * the audio for a moment (storage.c), which would be heard as a glitch over anything still ringing */
 static void autosave(void)
 {
-    if (ui.dirty && plat_ms() - ui.act_t >= SAVE_QUIET_MS && (engine_quiet_ms() >= 1000u || !eng_running))
+    if (ui.dirty && plat_ms() - ui.act_t >= SAVE_QUIET_MS && engine_quiet_ms() >= 1000u)
         save_now();
 }
 
@@ -1413,8 +1415,8 @@ static void draw_knobs(void)
             cell(0, "LOAD/PEAK", a, blk_peak >= 90u ? C_RED : C_HI);
             put_i(b, (int)plat_xruns());
             cell(1, "XRUNS", b, plat_xruns() ? C_RED : C_HI);
-            put_i(c, (int)eng_guard_count);
-            cell(2, "GUARD", c, engine_guard_active() ? C_AMB : C_HI);
+            put_i(put_s(put_i(c, (int)eng_econ_count), "/"), (int)eng_guard_count);
+            cell(2, "ECON/GUARD", c, engine_guard_active() ? C_RED : engine_economy() ? C_AMB : C_HI);
             put_i(d, (int)eng_out_clips);
             cell(3, "CLIPS", d, eng_out_clips ? C_RED : C_HI);
             hint("SEL: LOAD TEST", 0);

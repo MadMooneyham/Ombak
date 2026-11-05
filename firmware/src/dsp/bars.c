@@ -6,16 +6,19 @@
 #include "../app/plat.h"
 
 /* ------------------------------------------------------------ the sine --- */
-#define SIN_N 2048
+#define SIN_N 2048                               /* 2^11: the phase's top 11 bits index it, the next 21 interpolate */
 static float sin_tab[SIN_N + 1] OMB_POOL;
-static inline float sin_t(float turns)           /* any phase within +-64 turns */
+static inline float sin_q(uint32_t ph)
 {
-    float x = turns * (float)SIN_N + (float)(SIN_N * 64), f;
-    int32_t i = (int32_t)x;
-    f = x - (float)i;
-    i &= SIN_N - 1;
+    uint32_t i = ph >> 21;
+    float f = (float)(int32_t)(ph & 0x1FFFFFu) * (1.0f / 2097152.0f);
     return sin_tab[i] + (sin_tab[i + 1] - sin_tab[i]) * f;
 }
+static uint32_t tq(float turns)                  /* turns (|x| < 0.5) as a fixed-point phase step */
+{
+    return (uint32_t)(int32_t)(turns * 2147483648.0f) * 2u;
+}
+#define QUARTER 0x40000000u                      /* a quarter turn: sin_q(x + QUARTER) is the cosine */
 
 /* ------------------------------------------------------ the instruments --- */
 /* each carrier: ratio, level, seconds to -60 dB, attack seconds, and its modulator's ratio, index
@@ -87,6 +90,7 @@ void bars_init(bars_t *b)
     b->rng = 0x13579BDFu;
     b->gen = 1;
     b->cap = BARS_VOICES;
+    b->floor = 1e-4f;
 }
 
 /* a free voice (while fewer than cap sound) in the half of the pool with fewer sounding, so the two cores share
@@ -140,8 +144,8 @@ bars_handle_t bars_strike(bars_t *b, const bars_strike_t *s)
     v->gl = fm_sin_turns(x + 0.25f) * 1.41421356f;
     v->gr = fm_sin_turns(x) * 1.41421356f;
     v->xsend = 0.0f;
-    v->bph = 0.0f;
-    v->binc = s->beat * sp->ombak * 0.5f / BARS_SR;
+    v->bph = 0;
+    v->binc = tq(s->beat * sp->ombak * 0.5f / BARS_SR);
     v->glide = sp->glide;
     v->gk = fm_expf(-256.0f / (0.13f * BARS_SR));
     {
@@ -168,15 +172,17 @@ bars_handle_t bars_strike(bars_t *b, const bars_strike_t *s)
             p->bamp = p->bstep = 0.0f;
             p->batt = 0;
             p->bk = 1.0f;
-            p->inc = p->inc0 = s->hz * o->r / BARS_SR;
+            p->ph = 0;
+            p->inc = p->inc0 = tq(s->hz * o->r / BARS_SR);
             p->k = fall(o->d * ring);
             p->a = a;
             p->att = att ? att : 1u;
             p->astep = a / (float)p->att;
             p->amp = 0.0f;
-            p->mph = 0.0f;
-            p->minc = p->minc0 = s->hz * o->r * o->mr / BARS_SR;
-            p->mi = o->mr > 0.0f ? o->mi * s->bright * (1.0f / FM_TWO_PI) : 0.0f;
+            p->mph = 0;
+            p->minc = p->minc0 = tq(s->hz * o->r * o->mr / BARS_SR);
+            p->mi = o->mr > 0.0f ? o->mi * s->bright * (1073741824.0f / FM_TWO_PI) : 0.0f;   /* (turns x 2^30: room
+                                                         * for the brightest, ~1.1 turns) */
             p->mk = o->md > 0.0f ? fall(o->md) : 0.0f;
         }
         v->nops = (uint8_t)n;
@@ -187,15 +193,15 @@ bars_handle_t bars_strike(bars_t *b, const bars_strike_t *s)
     if (v->hum) {                                /* the hum: amp - hamp2, a rise then a long fall */
         bars_op_t *p = &v->op[v->nops];
         float a = g * sp->hum_a * s->hum, rise = sp->hum_rise * s->swell;
-        p->ph = 0.0f;
-        p->inc = p->inc0 = s->hz / BARS_SR;
+        p->ph = 0;
+        p->inc = p->inc0 = tq(s->hz / BARS_SR);
         p->amp = p->a = a;
         p->k = fm_expf(-6.9077553f / (sp->hum_d * ring * BARS_SR));
         p->att = p->batt = 0;
         p->astep = p->bamp = p->bstep = 0.0f;
         p->bk = 1.0f;
         p->mi = 0.0f;
-        p->minc = p->minc0 = 0.0f;
+        p->minc = p->minc0 = 0;
         v->hamp2 = a;
         v->hk2 = fm_expf(-2.5f / (fm_maxf(rise, 0.02f) * BARS_SR));
     }
@@ -228,7 +234,7 @@ void bars_bend(bars_t *b, bars_handle_t h, float beat, float pan, float gain, fl
     if (!bars_alive(b, h))
         return;
     v = &b->v[h.i];
-    v->binc = beat * 0.5f / BARS_SR;
+    v->binc = tq(beat * 0.5f / BARS_SR);
     x = (fm_clampf(pan, -1.0f, 1.0f) + 1.0f) * 0.25f;
     v->gl = fm_sin_turns(x + 0.25f) * 1.41421356f * gain;
     v->gr = fm_sin_turns(x) * 1.41421356f * gain;
@@ -265,22 +271,22 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
         sounded++;
         if (v->glide > 1e-5f) {                  /* the gong's pitch falls into place */
             float m = 1.0f + v->glide;
-            for (k = 0; k < v->nops + v->hum; k++) {
-                v->op[k].inc = v->op[k].inc0 * m;
-                v->op[k].minc = v->op[k].minc0 * m;
+            for (k = 0; k < v->nops + v->hum; k++) {   /* (a gong's steps are small: well inside int32) */
+                v->op[k].inc = (uint32_t)(int32_t)((float)(int32_t)v->op[k].inc0 * m);
+                v->op[k].minc = (uint32_t)(int32_t)((float)(int32_t)v->op[k].minc0 * m);
             }
             v->glide *= v->gk;
         }
         for (k = 0; k < v->nops; k++) {          /* the carriers still sounding (above -80 dB); the rest are silent */
             bars_op_t *o = &v->op[k];
-            if (o->amp + o->bamp > 1e-4f || o->att || o->batt)
+            if (o->amp + o->bamp > b->floor || o->att || o->batt)
                 act[na++] = o;
             else
                 o->amp = o->bamp = 0.0f;         /* (not left at their last level: the voice could never end) */
-            if (o->mi < 2e-4f)                   /* (a modulator that has fallen silent stops) */
+            if (o->mi < 2e-4f * 1073741824.0f)   /* (a modulator that has fallen silent stops: under 2e-4 turns) */
                 o->mi = 0.0f;
         }
-        if (!na && (!v->hum || v->op[v->nops].amp < 1e-4f)) {   /* nothing left to sound: the voice is free */
+        if (!na && (!v->hum || v->op[v->nops].amp < b->floor)) {   /* nothing left to sound: the voice is free */
             v->on = 0;
             continue;
         }
@@ -296,18 +302,14 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
             float s = 0.0f;
             for (k = 0; k < na; k++) {
                 bars_op_t *o = act[k];
-                float m = 0.0f;
-                if (o->mi > 0.0f) {
-                    m = sin_t(o->mph) * o->mi;
+                uint32_t m = 0;
+                if (o->mi > 0.0f) {              /* the modulator moves the carrier's phase (x 4: turns x 2^32) */
+                    m = (uint32_t)(int32_t)(sin_q(o->mph) * o->mi) * 4u;
                     o->mph += o->minc;
-                    if (o->mph >= 1.0f)
-                        o->mph -= 1.0f;
                     o->mi *= o->mk;
                 }
-                s += sin_t(o->ph + m) * (o->amp + o->bamp);   /* (the carrier and its bloom: one sine) */
+                s += sin_q(o->ph + m) * (o->amp + o->bamp);   /* (the carrier and its bloom: one sine) */
                 o->ph += o->inc;
-                if (o->ph >= 1.0f)
-                    o->ph -= 1.0f;
                 if (o->att) {
                     o->amp += o->astep;
                     o->att--;
@@ -323,10 +325,8 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
             }
             if (v->hum) {                        /* the hum, swelling: the slow fall less the fast one */
                 bars_op_t *o = &v->op[v->nops];
-                s += sin_t(o->ph) * (o->amp - v->hamp2);
+                s += sin_q(o->ph) * (o->amp - v->hamp2);
                 o->ph += o->inc;
-                if (o->ph >= 1.0f)
-                    o->ph -= 1.0f;
                 o->amp *= o->k;
                 v->hamp2 *= v->hk2;
             }
@@ -338,14 +338,12 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
                 v->nz *= v->nzk;
             }
             if (!(i & 15) || i == start) {       /* the ombak, the pair's beating: slow, so a line each 16 samples */
-                float to = sin_t(v->bph + 16.0f * v->binc + 0.25f);
+                float to = sin_q(v->bph + 16u * v->binc + QUARTER);
                 v->bstep = (to - v->bcur) * (1.0f / 16.0f);
             }
             s *= v->bcur * v->gain;
             v->bcur += v->bstep;
             v->bph += v->binc;
-            if (v->bph >= 1.0f)
-                v->bph -= 1.0f;
             if (v->damp_in == 0u)
                 v->gain *= v->damp_k;
             else if (v->damp_in != 0xFFFFFFFFu)
@@ -361,7 +359,7 @@ int bars_render(bars_t *b, int lo, int hi, float (*bus)[2][256], float *xs, int 
             lvl += v->op[v->nops].amp;
         lvl = lvl * v->gain + (v->nz > 1e-5f ? v->nz : 0.0f);   /* (a mallet fallen silent no longer counts) */
         v->level = lvl;
-        if (lvl < 1e-4f)                         /* (-80 dB: it has rung out) */
+        if (lvl < b->floor)                      /* (it has rung out) */
             v->on = 0;
         for (k = 0; k < v->nops; k++) {          /* (no denormals in the falls) */
             v->op[k].amp = fm_flush(v->op[k].amp);

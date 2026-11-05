@@ -129,6 +129,8 @@ const char *engine_stage_name(int st);
 void engine_load(uint32_t pct, uint32_t frames);
 int engine_guard_active(void);
 extern volatile uint32_t eng_guard_count;
+int engine_economy(void);                /* economy: under load, the quiet tails end sooner, fewer voices at once */
+extern volatile uint32_t eng_econ_count;
 
 void engine_init(void);
 void engine_render(int32_t *out_lr, uint32_t n);

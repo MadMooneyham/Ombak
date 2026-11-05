@@ -23,14 +23,17 @@
 
 enum { IN_GENDER, IN_GANGSA, IN_JUBLAG, IN_JEGOGAN, IN_REYONG, IN_GONG, IN_KEMPUR, IN_KEMONG, IN_KAJAR, IN_N };
 
+/* phases are fixed point: a turn is 2^32, so they wrap by themselves and the sine table's index and fraction
+ * are their bits (no float-int conversions, no wrapping tests, in the loop that runs most) */
 typedef struct {
-    float ph, inc, inc0;                 /* turns; inc0 without the gong's glide */
+    uint32_t ph, inc, inc0;              /* inc0 without the gong's glide */
     float amp, k;                        /* the level now, its fall a sample */
     float a, astep;                      /* the level it rises to, a sample's rise (0: risen) */
     uint32_t att;                        /* samples of the rise left */
     float bamp, bk, bstep;               /* a resonator's bloom on the same partial: its own level, fall, rise */
     uint32_t batt;                       /* (sharing the carrier's sine: one evaluation for both) */
-    float mph, minc, minc0, mi, mk;      /* the modulator: phase, inc, index (turns of phase), its fall */
+    uint32_t mph, minc, minc0;           /* the modulator */
+    float mi, mk;                        /* its index (turns of phase, x 2^30), its fall */
 } bars_op_t;
 
 typedef struct {
@@ -40,7 +43,7 @@ typedef struct {
     uint32_t damp_in;                    /* samples until the damping hand (0xFFFFFFFF: none) */
     float damp_k, gain;                  /* the damping's fall a sample; the voice's gain (1, falling once damped) */
     float gl, gr, xsend;                 /* its place within its part; its own extra send (a white key's SHIMMER) */
-    float bph, binc;                     /* the ombak's beating: cos(2 pi bph), bph += b / 2 / SR */
+    uint32_t bph, binc;                  /* the ombak's beating: cos of bph, bph += b / 2 / SR turns */
     float bcur, bstep;                   /* (it moves slowly: evaluated each 16 samples, a line between) */
     float glide, gk;                     /* the gong's pitch, from (1 + glide) down to 1 */
     float hamp2, hk2;                    /* the hum's fast exponential (subtracted: the swell) */
@@ -53,7 +56,9 @@ typedef struct {
     bars_voice_t v[BARS_VOICES];
     uint32_t rng;
     uint16_t gen;
-    int cap;                             /* the most that sound at once (the overload guard lowers it) */
+    int cap;                             /* the most that sound at once (economy and the overload guard lower it) */
+    float floor;                         /* below this a partial, and a voice, has rung out (1e-4: -80 dB; economy
+                                          * raises it, so the quiet tails end sooner) */
 } bars_t;
 
 /* a stroke: what to play, and the shaping that SHAPE and the holds put on it */

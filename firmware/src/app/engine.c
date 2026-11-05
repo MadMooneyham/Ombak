@@ -200,14 +200,55 @@ static void bench_block(uint32_t n)
 #define GUARD_ON_AVG 85u
 #define GUARD_OFF 65u
 #define GUARD_CALM_FRAMES (3u * 44100u)
-#define GUARD_VOICES 24
+#define GUARD_VOICES 20
+/* ECONOMY, before that: past 70% on average the quiet tails end sooner (at -60 dB, not -80) and the voices that
+ * may sound at once step down, a voice every 8 blocks, to no fewer than 16 (new strokes take the quietest);
+ * after 1 s under 55% they step back up. In a full mix the tails it cuts are not heard */
+#define ECON_ON 70u
+#define ECON_OFF 55u
+#define ECON_CALM_FRAMES 44100u
+#define ECON_FLOOR 16
+static uint8_t econ_on;
+static uint32_t econ_calm;
+static int pool_cap = BARS_VOICES;
+volatile uint32_t eng_econ_count;
+int engine_economy(void) { return econ_on; }
 static uint8_t guard_on, guard_enabled = 1;
 static uint32_t guard_avg_q8, guard_calm;
 volatile uint32_t eng_guard_count;
 int engine_guard_active(void) { return guard_on; }
+static void economy_block(void)                  /* (CTRL) the pool's cap and floor for this block */
+{
+    static uint32_t blk;
+    int on = bars_active(&bars);
+    blk++;
+    if (econ_on || guard_on) {
+        if (!(blk & 7u) && pool_cap > ECON_FLOOR)
+            pool_cap = (on < pool_cap ? on : pool_cap) - 1;
+        if (pool_cap < ECON_FLOOR)
+            pool_cap = ECON_FLOOR;
+    } else if (pool_cap < BARS_VOICES && !(blk & 7u)) {
+        pool_cap++;
+    }
+    bars.cap = guard_on && pool_cap > GUARD_VOICES ? GUARD_VOICES : pool_cap;
+    bars.floor = econ_on || guard_on ? 1e-3f : 1e-4f;
+}
 void engine_load(uint32_t pct, uint32_t frames)
 {
     guard_avg_q8 = (guard_avg_q8 * 15u + pct * 256u) / 16u;
+    if (!guard_enabled) {
+        econ_on = 0;
+    } else if (!econ_on) {
+        if (guard_avg_q8 > ECON_ON * 256u) {
+            econ_on = 1;
+            econ_calm = 0;
+            eng_econ_count++;
+        }
+    } else if (guard_avg_q8 >= ECON_OFF * 256u) {
+        econ_calm = 0;
+    } else if ((econ_calm += frames) >= ECON_CALM_FRAMES) {
+        econ_on = 0;
+    }
     if (!guard_enabled) {
         guard_on = 0;
         guard_calm = 0;
@@ -939,7 +980,7 @@ void engine_render(int32_t *out_lr, uint32_t n)
     for (k = 0; k < ST_N; k++)
         st_t[k] = 0;
     /* CTRL: commands, the motion, the cycle's strokes for this block */
-    bars.cap = guard_on ? GUARD_VOICES : BARS_VOICES;
+    economy_block();
     scale_check();
     drain();
     motion(n);

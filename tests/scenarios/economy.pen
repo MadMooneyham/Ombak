@@ -1,0 +1,20 @@
+# Economy: the load held at 78% (as if the FM-1 were working hard), it engages: the quiet tails end sooner,
+# fewer voices at once; back under 55% for a second, it lets go
+wait 300
+turn K2 30
+tap SEQ
+tapkey w0
+wait 600
+tapkey w4
+wait 600
+tapkey w2
+wait 600
+load 78
+wait 3000
+expect economy 1
+expect guard 0
+expect voices <17
+expect clips 0
+load 30
+wait 2500
+expect economy 0

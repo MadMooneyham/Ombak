@@ -29,7 +29,9 @@ release FX
 wait 4000
 expect clips 0
 tap SEQ
-wait 3000
+# (a save waits for the long rings to fall silent)
+wait 40000
+expect store_writes >0
 reboot
 wait 500
 expect p0 3
