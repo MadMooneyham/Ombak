@@ -36,8 +36,14 @@ On Linux x86-64 the toolchain runs natively. On macOS the build runs each tool i
 
 `JIELI_TOOLCHAIN` and `AC79_SDK` override the default locations (`~/.jieli/toolchain`, `~/fw-AC79_AIoT_SDK`).
 
-`./build.sh --release 0.1` makes a release build: the package is `build/ombak-0.1.fwsc`, identity
-`FM-1_74000100` (74 is Ombak's; Penumbra's is 73), its version `0.1 BETA` (a 0.x is a beta).
+`./build.sh --release 0.1.5` makes a release build: the package is `build/ombak-0.1.5.fwsc`, identity
+`FM-1_74000105` (74 is Ombak's; Penumbra's is 73), its version `0.1.5 BETA` (a 0.x is a beta).
+
+**A release:** build it, then publish a GitHub release tagged `v0.1.5` with `build/ombak-0.1.5.fwsc` attached
+and `RELEASE-0.1.5.md` as its notes. Publishing runs `.github/workflows/pages.yml`, which builds the site
+(`tools/make_pages.py`: the landing page, the web installer, the reader's words) from that release's own package
+and deploys it to GitHub Pages (Settings > Pages > Source: GitHub Actions, once). Locally:
+`python3 tools/make_pages.py build/ombak-0.1.5.fwsc 0.1.5 build/pages`, then `python3 -m http.server` there.
 
 The build also generates `build/gen/`: the font, the logo (`tools/gen_logo.py`, from `assets/logo.jpg`), the
 Ongkara (`tools/gen_ongkara.py`, from `assets/ongkara.png`), the effects' tables and the screen reader's words link.
@@ -60,11 +66,11 @@ works is measured on the FM-1 itself, on its BENCH page (GLO, then GLO again; SE
 From the command line (needs `pip3 install mido python-rtmidi`):
 
 ```
-python3 tools/fm1_install.py build/ombak-0.1.fwsc
+python3 tools/fm1_install.py build/ombak-0.1.5.fwsc
 python3 tools/fm1_install.py --info          # identity of the connected FM-1
 ```
 
-Penumbra's web installer takes the package too. Installing firmware is at your own risk. If the FM-1 no longer
+The web installer (https://madmooneyham.github.io/Ombak/install/, or the local site above) takes it in Chrome. Installing firmware is at your own risk. If the FM-1 no longer
 starts but reaches the chip's update mode (4C4A:8057 on USB), `tools/fm1_rescue.sh` puts stock V15 back from a
 Mac; otherwise recovery needs [FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter). Holding OCT- and
 OCT+ for five seconds puts Ombak in update mode, as in Penumbra.
