@@ -365,6 +365,8 @@ for a few more patterns, and the Penumbra eclipse gone from the boot screen.
 - **A/B** (SHAPE's SEL): two shapes of the gamelan playing, this session's: everything from HOME's knobs to the
   FX, not the gamelan, form or kotekan style. B starts as A.
 
+David on 0.1.4 (2026-11-05), flashed and tested on the FM-1: "It runs great. Sounds amazing."
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.
