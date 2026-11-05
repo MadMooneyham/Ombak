@@ -70,9 +70,20 @@ static const inst_spec_t INST[IN_N] = {
     /* kajar: a muted kettle */
     {0.13f, 0.5f, 0.0f, 2, {{1.0f, 1.0f, 0.2f, 0.001f, 1.47f, 2.2f, 0.04f}, {2.6f, 0.35f, 0.08f, 0.003f, 0, 0, 0}},
      0, 0, 0, 0.3f, 5.0f, 2.0f, 0.012f},
+    /* kendang wadon, the low drum: a skin's tone that falls into place fast, its overtones, the hand's slap (the
+     * mallet's noise: louder for a slap stroke). No ombak: a drum does not beat */
+    {0.42f, 0.0f, 0.45f, 2, {{1.0f, 1.0f, 0.38f, 0.001f, 0, 0, 0}, {1.59f, 0.36f, 0.16f, 0.001f, 0, 0, 0}},
+     0, 0, 0, 0.24f, 7.0f, 1.2f, 0.035f},
+    /* kendang lanang, the high drum */
+    {0.36f, 0.0f, 0.35f, 2, {{1.0f, 1.0f, 0.26f, 0.001f, 0, 0, 0}, {1.62f, 0.34f, 0.12f, 0.001f, 0, 0, 0}},
+     0, 0, 0, 0.28f, 6.0f, 1.2f, 0.028f},
+    /* ceng-ceng: small cymbals struck together: a hiss over clangorous, quickly choked partials */
+    {0.10f, 0.0f, 0.0f, 3, {{1.0f, 0.5f, 0.22f, 0.001f, 1.47f, 3.0f, 0.12f}, {1.83f, 0.45f, 0.16f, 0.001f, 2.21f, 2.4f, 0.1f},
+                            {2.71f, 0.35f, 0.12f, 0.001f, 0, 0, 0}},
+     0, 0, 0, 1.0f, 7.0f, 0.8f, 0.07f},
 };
 static const char *const INST_N[IN_N] = {"GENDER", "GANGSA", "JUBLAG", "JEGOGAN", "REYONG", "GONG", "KEMPUR",
-                                         "KEMONG", "KAJAR"};
+                                         "KEMONG", "KAJAR", "KENDANG WADON", "KENDANG LANANG", "CENG-CENG"};
 const char *bars_inst_name(int inst) { return inst >= 0 && inst < IN_N ? INST_N[inst] : ""; }
 
 static float fall(float secs60)                  /* a sample's factor for a fall of 60 dB in secs60 */
@@ -125,7 +136,7 @@ static int pick(bars_t *b)
 bars_handle_t bars_strike(bars_t *b, const bars_strike_t *s)
 {
     const inst_spec_t *sp = &INST[s->inst < IN_N ? s->inst : 0];
-    const int gong = s->inst >= IN_GONG;
+    const int gong = BARS_IS_GONG(s->inst);
     const float ring = gong ? s->gong_ring : s->ring, g = s->vel * sp->gain;
     bars_handle_t h;
     bars_voice_t *v;
@@ -147,7 +158,7 @@ bars_handle_t bars_strike(bars_t *b, const bars_strike_t *s)
     v->bph = 0;
     v->binc = tq(s->beat * sp->ombak * 0.5f / BARS_SR);
     v->glide = sp->glide;
-    v->gk = fm_expf(-256.0f / (0.13f * BARS_SR));
+    v->gk = fm_expf(-256.0f / ((gong ? 0.13f : 0.035f) * BARS_SR));   /* (a drum's skin settles faster) */
     {
         int n = 0, j;
         float rat[BARS_OPS];

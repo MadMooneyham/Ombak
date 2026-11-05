@@ -67,7 +67,7 @@ turn K4 20 15
 turn K4 -20 15
 wavstop
 tap ENV
-turn SELECT 6
+turn SELECT 8
 tapkey w5
 wav pan.wav
 turn K1 20 15

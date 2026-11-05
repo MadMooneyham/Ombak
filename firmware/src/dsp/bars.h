@@ -21,7 +21,9 @@
 #define BARS_OPS 6                       /* five carriers and a gong's hum */
 #define BARS_PARTS 4                     /* the buses: your gendèr, the core, the elaboration, the gongs */
 
-enum { IN_GENDER, IN_GANGSA, IN_JUBLAG, IN_JEGOGAN, IN_REYONG, IN_GONG, IN_KEMPUR, IN_KEMONG, IN_KAJAR, IN_N };
+enum { IN_GENDER, IN_GANGSA, IN_JUBLAG, IN_JEGOGAN, IN_REYONG, IN_GONG, IN_KEMPUR, IN_KEMONG, IN_KAJAR,
+       IN_WADON, IN_LANANG, IN_CENG, IN_N };     /* the kendang's two drums (wadon low, lanang high), the ceng-ceng */
+#define BARS_IS_GONG(i) ((i) >= IN_GONG && (i) <= IN_KAJAR)
 
 /* phases are fixed point: a turn is 2^32, so they wrap by themselves and the sine table's index and fraction
  * are their bits (no float-int conversions, no wrapping tests, in the loop that runs most) */

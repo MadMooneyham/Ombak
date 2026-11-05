@@ -86,6 +86,8 @@ static void defaults_init(void)
         DEF[P_FX + i] = FX_DEF[i];
     DEF[P_FORM] = 0;
     DEF[P_K_STYLE] = KS_CIRCLE;
+    DEF[P_L_KEN] = DEF[P_L_CENG] = DEF[P_L_SUL] = 100;
+    DEF[P_S_REG] = 1;
 }
 /* a form with the lanang in it brings it in (FREE leaves it to its PLACES: off as made) */
 void engine_form(int f)
@@ -286,7 +288,7 @@ void engine_load(uint32_t pct, uint32_t frames)
 
 /* ------------------------------------------------------- command queue --- */
 /* single producer (main loop), single consumer (audio ISR): type:4 | a:8 | b:8 | c:12 */
-enum { C_RUN, C_WHITE, C_OCT, C_GONG, C_END, C_PMODE, C_PENS, C_LOOP, C_BEND, C_THROW, C_TEST };
+enum { C_RUN, C_WHITE, C_OCT, C_GONG, C_END, C_PMODE, C_PENS, C_LOOP, C_BEND, C_THROW, C_TEST, C_ANGSEL, C_CC };
 #define CQ 256u
 static uint32_t cq[CQ];
 static volatile uint32_t cq_w, cq_r;
@@ -311,6 +313,8 @@ void engine_bend(int k, int which, int value) { cq_put(C_BEND, (uint32_t)k, (uin
 void engine_throw(int i, int value) { cq_put(C_THROW, (uint32_t)i, 0, (uint32_t)(value + 128)); }
 static volatile uint8_t testing;
 void engine_load_test(int on) { cq_put(C_TEST, (uint32_t)(on != 0), 0, 0); }
+void engine_angsel(void) { cq_put(C_ANGSEL, 0, 0, 0); }
+void engine_cc_out(int cc, int v) { cq_put(C_CC, (uint32_t)cc, (uint32_t)v, 0); }
 int engine_load_testing(void) { return testing; }
 static uint8_t midi_ch = 1;
 void engine_midi_ch(int ch) { midi_ch = (uint8_t)ch; }
@@ -323,12 +327,13 @@ void engine_midi_ch(int ch) { midi_ch = (uint8_t)ch; }
  * phase (a beat at most half as long again or as short). Half a second without a tick: Ombak's own tempo again */
 #define CLK_STAMP_HZ 5859.375f
 #define CLK_SPAN 48u
-static uint8_t clk_out = 1, clk_in = 1, note_send;
-void engine_midi_opts(int clock_out, int clock_in, int n_out)
+static uint8_t clk_out = 1, clk_in = 1, note_send, cc_send;
+void engine_midi_opts(int clock_out, int clock_in, int n_out, int c_out)
 {
     clk_out = (uint8_t)(clock_out != 0);
     clk_in = (uint8_t)(clock_in != 0);
     note_send = (uint8_t)(n_out != 0);
+    cc_send = (uint8_t)(c_out != 0);
 }
 static struct {
     uint16_t stamp[CLK_SPAN + 1u];
@@ -632,6 +637,7 @@ static struct {
     uint32_t beat_no;
     float end_mul;
     int end_beats, end_gongs;
+    uint8_t angsel_pend, angsel;                 /* an angsel asked for; this beat is one */
 } cy;
 static int16_t core_c = NONE, core_n = NONE;
 static int8_t oct;
@@ -707,6 +713,8 @@ static void begin_beat(uint32_t off)
     }
     cy.dyn = (1.0f + x127(P_BREATH) * (0.5f * fm_sin_turns(0.5f * p) - 0.25f)) * swell_now;
     cy.fade = eng_ending ? fm_maxf(0.2f, 1.0f - (float)cy.end_beats * x128(P_E_THIN) * 0.16f) : 1.0f;
+    cy.angsel = cy.angsel_pend && !final;
+    cy.angsel_pend = 0;
     /* the cycle's instruments at their places (the ending's last: the gong) */
     if (final)
         gong(G_GONG, off, 0.9f);
@@ -768,7 +776,95 @@ static int kot_sub(void)
     return s ? SUB[s] : dn < 0.08f ? 0 : dn < 0.55f ? 4 : 8;
 }
 static int sparse(int j, int i) { return j != 0 && rnd01() < x127(i) * 0.85f; }   /* (never the landing) */
+
+/* THE DRUMS. The kendang: two drums, wadon (low) and lanang (high), interlocking as the kotekan's two parts do,
+ * the wadon's open DAG on the strong places, the lanang's TUT between and its PAK (a slap) answering; two
+ * figures, one a beat, in turn. The ceng-ceng: small cymbals, the beat in four, the first stroke open. Both
+ * thin as the beat slows (a beat over 2.4 s: two strokes; over 4 s: one), and BUSY thins or fills them. They
+ * sit with the elaboration (HUSH lets them fall away too). */
+static void drum(int inst, float hz, float vel, float slap, float pan, uint32_t delay)
+{
+    bars_strike_t s;
+    s.inst = (uint8_t)inst;
+    s.part = PART_KOT;
+    s.hz = hz * (0.985f + 0.03f * rnd01());
+    s.vel = vel * (0.88f + 0.2f * rnd01());
+    s.pan = pan;
+    s.delay = delay;
+    s.beat = 0.0f;
+    s.bright = bright_now;
+    s.ring = s.bloom = s.body = s.hum = s.swell = s.gong_ring = 1.0f;
+    s.mallet = slap * x128(P_D_SLAP) * 2.0f;
+    bars_strike(&bars, &s);
+}
+static int drum_per(void)                        /* the drums' strokes a beat */
+{
+    float secs = cy.dur / SR, busy = x127(P_D_BUSY);
+    return secs > 4.0f ? 1 : secs > 2.4f ? 2 : busy < 0.3f ? 4 : 8;
+}
+static void drums(uint32_t off, int j, float lv)
+{
+    /* 0 none, 1 dug (soft), 3 dag (open, accented); the lanang's 1 tut, 2 pak (slap). Eight a beat */
+    static const uint8_t WAD[2][8] = {{3, 0, 0, 1, 0, 0, 3, 0}, {3, 0, 0, 1, 0, 1, 0, 0}};
+    static const uint8_t LAN[2][8] = {{0, 1, 0, 0, 2, 0, 0, 1}, {0, 1, 0, 0, 2, 0, 1, 0}};
+    const int parts = eng_w.p[P_PARTS], per = drum_per(), step = GRID / per, fig = (int)(cy.beat_no & 1u);
+    if (j % step)
+        return;
+    if (parts & PB_KEN) {
+        int q = (j / step) * 8 / per, w = WAD[fig][q], l = LAN[fig][q];
+        float v = lv * lvl(P_L_KEN);
+        if (per <= 2 && j == 0)
+            w = 3;                               /* (slow: the wadon keeps the beat) */
+        if (w)
+            drum(IN_WADON, 88.0f, (w == 3 ? 0.95f : 0.45f) * v, w == 3 ? 0.7f : 0.4f, -0.12f, off);
+        if (l && per >= 4)
+            drum(IN_LANANG, l == 2 ? 196.0f : 148.0f, (l == 2 ? 0.55f : 0.6f) * v, l == 2 ? 3.0f : 0.6f, 0.12f,
+                 off + (uint32_t)(rnd01() * 180.0f));
+    }
+    if ((parts & PB_CENG) && (per >= 4 ? !(j % (GRID / 4)) : 1))
+        drum(IN_CENG, 1100.0f, (j == 0 ? 0.9f : 0.5f) * lv * lvl(P_L_CENG), j == 0 ? 1.0f : 0.55f, 0.3f, off);
+}
+
+/* ANGSEL (SEL on HOME, or MIDI): the beat after it breaks. The ensemble strikes together, accented, on the beat
+ * and again late in it (syncopated), the drums and the ceng-ceng with it, and leaves the rest of the beat
+ * silent; then the music goes on. */
+static void angsel_strokes(uint32_t off, int j, int c, float lv)
+{
+    int parts = eng_w.p[P_PARTS];
+    float v = (j == 0 ? 1.0f : 0.85f) * lv;
+    if (j != 0 && j != 10)
+        return;
+    if (parts & PB_KOT) {
+        int k = fold(c, eng_w.p[P_KOT_G] ? 250.0f : 300.0f);
+        strike_h(H_POLOS, eng_w.p[P_KOT_G] ? IN_GENDER : IN_GANGSA, PART_KOT, pitch(k), 0.85f * v * lvl(P_L_KOT), -0.4f, off,
+                 2205u);
+        strike_h(H_SANGSIH, eng_w.p[P_KOT_G] ? IN_GENDER : IN_GANGSA, PART_KOT, pitch(k + sc.n), 0.8f * v * lvl(P_L_KOT),
+                 0.4f, off, 2205u);
+    }
+    if (parts & PB_REY) {
+        int r = fold(c, 480.0f);
+        strike_h(H_REY, IN_REYONG, PART_KOT, pitch(r), 0.8f * v * lvl(P_L_REY), 0.35f, off, 4410u);
+        play(IN_REYONG, PART_KOT, pitch(r + 2), 0.6f * v * lvl(P_L_REY), 0.45f, off, 0);
+    }
+    if (parts & PB_KEN) {
+        drum(IN_WADON, 88.0f, 1.0f * v * lvl(P_L_KEN), 0.8f, -0.12f, off);
+        drum(IN_LANANG, 196.0f, 0.7f * v * lvl(P_L_KEN), 3.0f, 0.12f, off);
+    }
+    if (parts & PB_CENG)
+        drum(IN_CENG, 1100.0f, 1.0f * v * lvl(P_L_CENG), 1.3f, 0.3f, off);
+}
+
+static void elaborate_parts(uint32_t off, int j, int c, int nx);
 static void elaborate(uint32_t off, int j, int c, int nx)
+{
+    if (cy.angsel) {
+        angsel_strokes(off, j, c, cy.dyn * cy.fade);
+        return;
+    }
+    drums(off, j, cy.dyn * cy.fade);
+    elaborate_parts(off, j, c, nx);
+}
+static void elaborate_parts(uint32_t off, int j, int c, int nx)
 {
     const float lv = cy.dyn * cy.fade, dens = x127(P_DENSITY);
     const int ks = kot_sub(), parts = eng_w.p[P_PARTS], step = ks ? GRID / ks : 0;
@@ -995,6 +1091,7 @@ static void midi_in(uint32_t pkt)
         case 22: eng_w.p[P_SPACE] = (uint8_t)d2; break;
         case 23: eng_w.p[P_BREATH] = (uint8_t)d2; break;
         case 24: eng_w.p[P_TEMPO] = (uint8_t)d2; break;
+        case 25: if (d2 >= 64u && eng_running && !eng_ending) cy.angsel_pend = 1; break;   /* an angsel */
         case 64: sustain = d2 >= 64; break;
         case 120: case 123:                      /* all sound / notes off: the hands lift and damp */
             sustain = 0;
@@ -1113,6 +1210,12 @@ static void drain(void)
             testing = (uint8_t)a;
             guard_enabled = !a;
             break;
+        case C_ANGSEL: if (eng_running && !eng_ending) cy.angsel_pend = 1; break;
+        case C_CC:                               /* MIDI CC OUT (the main loop's: sent from here, one sender) */
+            if (cc_send && midi_ch)
+                midi_send(a >= 128u ? 0xC0u | (midi_ch - 1u) : 0xB0u | (midi_ch - 1u), a >= 128u ? a - 128u : a,
+                          a >= 128u ? 0u : (b > 127u ? 127u : b));
+            break;
         default: break;
         }
     }
@@ -1184,6 +1287,68 @@ __attribute__((noinline)) static void add_glide(float *dst, const float *src, gl
 static glide_t gl_l[NPARTS] = {{-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}}, gl_r[NPARTS] = {{-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}};
 static glide_t gl_s[NPARTS] = {{-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}}, gl_x = {-1, 0};
 
+/* --------------------------------------------------------------- suling --- */
+/* The suling, the bamboo flute: one long tone on the core note (REGISTER: from about 440 Hz, an octave down or
+ * up), gliding to each new one (GLIDE), a vibrato that grows in after each arrival (VIBRATO), the breath's hiss
+ * (BREATH). Balinese suling players breathe circularly, so the tone never has to break; it swells in as the cycle
+ * starts and fades as it stops. Its own few sines a sample, on the first core, with your gendèr. */
+static struct {
+    float ph, hz, amp, since, vph;               /* phase (turns), Hz now, level now, seconds on this note, vibrato */
+    float nlp, nbp;                              /* the breath's band-pass */
+    int note;
+} sul = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -32768};
+static void suling_block(float *L, float *R, uint32_t n)
+{
+    const int on = (eng_w.p[P_PARTS] & PB_SUL) && eng_running && core_c != NONE;
+    const float dt = 1.0f / SR, vib = x127(P_S_VIB) * 0.012f, breath = x127(P_S_BREATH) * 0.12f;
+    const float gk = 1.0f - fm_expf(-dt / (0.02f + 0.5f * x127(P_S_GLIDE) * x127(P_S_GLIDE)));
+    float to = 0.0f, target = 0.0f, ak, nf;
+    uint32_t i;
+    if (on) {
+        int k = fold(core_c, 220.0f * fm_exp2f((float)eng_w.p[P_S_REG]));
+        if (k != sul.note) {
+            sul.note = k;
+            sul.since = 0.0f;
+        }
+        to = pitch(k);
+        target = 0.13f * lvl(P_L_SUL) * swell_now;
+        if (sul.hz < 1.0f)
+            sul.hz = to;
+    }
+    if (sul.amp < 1e-5f && target <= 0.0f)
+        return;
+    ak = 1.0f - fm_expf(-dt / (target > sul.amp ? 0.35f : 1.6f));
+    nf = 2.0f * fm_sin_turns(fm_minf(sul.hz * 2.0f, 6000.0f) / SR * 0.5f);
+    for (i = 0; i < n; i++) {
+        float depth = vib * fm_minf(sul.since * 2.0f, 1.0f), f, s, hp;
+        if (on)
+            sul.hz += (to - sul.hz) * gk;
+        f = sul.hz * (1.0f + depth * fm_sin_turns(sul.vph));
+        sul.vph += 5.2f * dt;
+        if (sul.vph >= 1.0f)
+            sul.vph -= 1.0f;
+        sul.ph += f * dt;
+        if (sul.ph >= 1.0f)
+            sul.ph -= 1.0f;
+        s = fm_sin_turns(sul.ph) + 0.22f * fm_sin_turns(2.0f * sul.ph) + 0.06f * fm_sin_turns(3.0f * sul.ph);
+        hp = rnd01() * 2.0f - 1.0f - sul.nlp - 0.7f * sul.nbp;   /* the breath: noise about the second partial */
+        sul.nbp += nf * hp;
+        sul.nlp += nf * sul.nbp;
+        s = (s + breath * sul.nbp) * sul.amp;     /* (HUSH and the mix's place: the gendèr's part, after) */
+        sul.amp += (target - sul.amp) * ak;
+        L[i] += s;
+        R[i] += s;
+    }
+    sul.since += (float)n * dt;
+    sul.nlp = fm_flush(sul.nlp);
+    sul.nbp = fm_flush(sul.nbp);
+    if (sul.amp < 1e-5f && !on) {
+        sul.amp = 0.0f;
+        sul.hz = 0.0f;
+        sul.note = -32768;
+    }
+}
+
 /* ---------------------------------------------------------------- render --- */
 /* core 2: the first half of the voices into its buses; core 1 the rest, and the reverb's return of the
  * block before, meanwhile */
@@ -1246,6 +1411,7 @@ void engine_render(int32_t *out_lr, uint32_t n)
     for (i = 0; i < n; i++)
         xs1[i] = 0.0f;
     bars_render(&bars, BARS_VOICES / 2, BARS_VOICES, bus1, xs1, (int)n);
+    suling_block(bus1[PART_GENDER][0], bus1[PART_GENDER][1], n);
     st_t[ST_VOICES1] = plat_ticks24() - t;
     t = plat_ticks24();
     fxbus_wet_st(&fx, fx_send[fx_par ^ 1u], zero, wet_l, wet_r, (int)n);

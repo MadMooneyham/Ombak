@@ -37,6 +37,7 @@ int settings_load(void)
     s.clock_out &= 1u;
     s.clock_in &= 1u;
     s.notes_out &= 1u;
+    s.cc_out &= 1u;
     cfg = s;
     return 0;
 }
@@ -46,7 +47,7 @@ int settings_save(void) { return plat_store_save(OBJ_SET, &cfg, sizeof cfg); }
 void settings_apply(void)
 {
     engine_midi_ch(cfg.midi_ch);
-    engine_midi_opts(cfg.clock_out, cfg.clock_in, cfg.notes_out);
+    engine_midi_opts(cfg.clock_out, cfg.clock_in, cfg.notes_out, cfg.cc_out);
     engine_out_loud(cfg.out_loud);
     engine_usb_full(cfg.usb_full);
 }
@@ -55,9 +56,9 @@ void settings_apply(void)
 static void work_sane(work_t *w)
 {
     static const uint8_t MAX_OF[][2] = {{P_ENS, G_ENSEMBLES - 1}, {P_TUNING, G_TUNINGS - 1}, {P_MODE, 3}, {P_CYCLE, 3},
-                                        {P_AUTO, 1}, {P_CORE_G, 1}, {P_KOT_G, 1}, {P_PARTS, 15}, {P_K_SUB, 4},
+                                        {P_AUTO, 1}, {P_CORE_G, 1}, {P_KOT_G, 1}, {P_PARTS, 127}, {P_K_SUB, 4},
                                         {P_K_REG, 2}, {P_R_RATE, 1}, {P_R_REG, 2}, {P_O_REG, 2}, {P_E_AFTER, 1},
-                                        {P_FORM, G_FORMS - 1}, {P_K_STYLE, G_STYLES - 1}};
+                                        {P_FORM, G_FORMS - 1}, {P_K_STYLE, G_STYLES - 1}, {P_S_REG, 2}};
     int i, g;
     for (i = 0; i < NP; i++)
         w->p[i] &= 0x7Fu;
@@ -77,34 +78,41 @@ static void work_sane(work_t *w)
     w->loop_kept = w->loop_kept && w->loop_len;
 }
 
-/* format 1 (0.1 .. 0.1.3): without the form and the style */
-typedef struct {
-    uint32_t magic, format;
-    uint8_t p[NP_V1];
-    uint8_t loop_len, loop_kept;
-    int8_t loop[LOOP_MAX];
-} work_v1_t;
+/* A work as saved, any format: magic, format, its params (format 1: NP_V1 of them, 1.0's format 2: NP_V2,
+ * format 3: NP), the loop's length and kept, the loop; padded to 4 bytes. An older one is read with the
+ * params it did not have as made. */
+static int work_np(uint32_t format)
+{
+    return format == 1u ? NP_V1 : format == 2u ? NP_V2 : format == WORK_FORMAT ? NP : -1;
+}
+static uint32_t work_size(int np) { return (8u + (uint32_t)np + 2u + LOOP_MAX + 3u) & ~3u; }
+_Static_assert(((8u + NP + 2u + LOOP_MAX + 3u) & ~3u) == sizeof(work_t), "the work's layout");
+static int work_read(const uint8_t *b, uint32_t len, work_t *w)
+{
+    uint32_t magic = b[0] | b[1] << 8 | b[2] << 16 | (uint32_t)b[3] << 24;
+    uint32_t format = b[4] | b[5] << 8 | b[6] << 16 | (uint32_t)b[7] << 24;
+    int np = work_np(format), i;
+    if (magic != WORK_MAGIC || np < 0 || len < work_size(np))
+        return -1;
+    w->magic = WORK_MAGIC;
+    w->format = WORK_FORMAT;
+    for (i = 0; i < NP; i++)
+        w->p[i] = i < np ? b[8 + i] : engine_param_def(i);
+    w->loop_len = b[8 + np];
+    w->loop_kept = b[9 + np];
+    for (i = 0; i < LOOP_MAX; i++)
+        w->loop[i] = (int8_t)b[10 + np + i];
+    work_sane(w);
+    return 0;
+}
 
 int work_load(void)
 {
-    static union { work_t w; work_v1_t v1; } u;
+    static uint8_t buf[sizeof(work_t)];
     work_t w;
-    int n = plat_store_load(OBJ_WORK, &u, sizeof u), i;
-    if (n == (int)sizeof u.v1 && u.v1.magic == WORK_MAGIC && u.v1.format == 1u) {
-        w.magic = WORK_MAGIC;                    /* an older work: its own, the new params as made */
-        w.format = WORK_FORMAT;
-        for (i = 0; i < NP; i++)
-            w.p[i] = i < NP_V1 ? u.v1.p[i] : engine_param_def(i);
-        w.loop_len = u.v1.loop_len;
-        w.loop_kept = u.v1.loop_kept;
-        for (i = 0; i < LOOP_MAX; i++)
-            w.loop[i] = u.v1.loop[i];
-    } else if (n == (int)sizeof u.w && u.w.magic == WORK_MAGIC && u.w.format == WORK_FORMAT) {
-        w = u.w;
-    } else {
+    int n = plat_store_load(OBJ_WORK, buf, sizeof buf);
+    if (n < 8 || work_read(buf, (uint32_t)n, &w))
         return -1;                               /* (engine_init has the defaults in place) */
-    }
-    work_sane(&w);
     eng_w = w;
     return 0;
 }
@@ -122,21 +130,30 @@ _Static_assert(sizeof mine <= PLAT_STORE_MAX, "MINE fits one object");
 static uint8_t mine_ready;
 static void mine_load(void)
 {
-    int i, n;
+    static uint8_t buf[sizeof mine];
+    int i, n, np;
+    uint32_t format, sz;
     if (mine_ready)
         return;
     mine_ready = 1;
-    n = plat_store_load(OBJ_USER, &mine, sizeof mine);
-    if (n != (int)sizeof mine || mine.magic != MINE_MAGIC || mine.format != WORK_FORMAT) {
-        mine.magic = MINE_MAGIC;
-        mine.format = WORK_FORMAT;
-        for (i = 0; i < MINE_N; i++)
-            mine.kept[i] = 0;
-    }
+    mine.magic = MINE_MAGIC;
+    mine.format = WORK_FORMAT;
     for (i = 0; i < MINE_N; i++)
-        if (mine.kept[i] && (mine.w[i].magic != WORK_MAGIC || mine.w[i].format != WORK_FORMAT))
-            mine.kept[i] = 0;
+        mine.kept[i] = 0;
+    n = plat_store_load(OBJ_USER, buf, sizeof buf);
+    if (n < 12 || (buf[0] | buf[1] << 8 | buf[2] << 16 | (uint32_t)buf[3] << 24) != MINE_MAGIC)
+        return;
+    format = buf[4] | buf[5] << 8 | buf[6] << 16 | (uint32_t)buf[7] << 24;
+    if ((np = work_np(format)) < 0)
+        return;
+    sz = work_size(np);                          /* the slots, each a work of that format, after the header */
+    for (i = 0; i < MINE_N; i++) {
+        uint32_t at = 8u + MINE_N + (uint32_t)i * sz;
+        if (buf[8 + i] && (uint32_t)n >= at + sz && !work_read(buf + at, sz, &mine.w[i]))
+            mine.kept[i] = 1;
+    }
 }
+_Static_assert(sizeof mine == 8u + MINE_N + MINE_N * sizeof(work_t), "MINE's layout");
 int mine_kept(int i)
 {
     mine_load();

@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define G_TUNINGS 10
-#define G_ENSEMBLES 7
+#define G_ENSEMBLES 8
 #define G_FORMS 5
 #define G_STYLES 4
 #define G_MAXN 7
@@ -41,7 +41,8 @@ typedef struct {
     const char *name;
     uint8_t tuning, cycle;               /* cycle: 0 4 beats, 1 8, 2 16, 3 32 */
     uint8_t autog, core_gender, kot_gender;
-    uint8_t parts;                       /* bit 0 core, 1 kotekan, 2 reyong, 3 ornaments */
+    uint8_t parts;                       /* bit 0 core, 1 kotekan, 2 reyong, 3 ornaments, 4 kendang, 5 ceng-ceng,
+                                          * 6 suling */
     uint8_t ombak, tempo, breath, density;   /* the params' own scales (engine.h) */
     uint8_t space;                       /* 0xFF: as it is */
     uint8_t kajar;                       /* the kajar's places */

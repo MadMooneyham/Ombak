@@ -110,14 +110,19 @@ const char *g_name(const g_scale_t *s, int idx) { return s->name[idx - fdiv(idx,
 /* and two with the tradition's forms: GILAK (Bali's eight-beat processional and opening form, gong Peliatan,
  * nyog cag kotekan, 60 a minute) and LADRANG (Java's 32-beat form on Kanyut Mesem pelog: the core and the
  * gendèr's ornaments, no kotekan, 30 a minute, little ombak). Tempo 110 = 60, 84 = 30 */
+/* (1.1: the kendang and ceng-ceng with the ensembles that have them: semar pegulingan, gong gede, gilak, gong
+ * kebyar; the suling with semar pegulingan and STILL. GONG KEBYAR: the twentieth-century style, five-tone
+ * pelog from Peliatan's gamelan, fast (76 a minute), brilliant ombak (7 Hz), norot gangsa, everything in;
+ * tempo 118 = 76, ombak 116 = 7 Hz) */
 const g_ensemble_t G_ENSEMBLE[G_ENSEMBLES] = {
     {"GENDER WAYANG", 0, 1, 0, 1, 1, 0x3, 109, 98, 32, 76, 0xFF, 1, 64, 0, KS_CIRCLE},
-    {"SEMAR PEGULINGAN", 6, 2, 1, 0, 0, 0xB, 99, 95, 44, 64, 0xFF, 1, 64, 0, KS_CIRCLE},
+    {"SEMAR PEGULINGAN", 6, 2, 1, 0, 0, 0x7B, 99, 95, 44, 64, 0xFF, 1, 64, 0, KS_CIRCLE},
     {"ANGKLUNG", 4, 1, 1, 0, 0, 0x7, 112, 101, 25, 70, 0xFF, 1, 64, 0, KS_NOROT},
-    {"STILL", 0, 1, 1, 1, 1, 0x3, 54, 25, 51, 38, 89, 0, 108, 0, KS_CIRCLE},
-    {"GONG GEDE", 8, 3, 1, 0, 0, 0x7, 85, 87, 76, 38, 0xFF, 1, 64, 0, KS_CIRCLE},
-    {"GILAK", 8, 1, 1, 0, 0, 0x7, 99, 110, 20, 90, 0xFF, 1, 64, 1, KS_NYOGCAG},
+    {"STILL", 0, 1, 1, 1, 1, 0x43, 54, 25, 51, 38, 89, 0, 108, 0, KS_CIRCLE},
+    {"GONG GEDE", 8, 3, 1, 0, 0, 0x37, 85, 87, 76, 38, 0xFF, 1, 64, 0, KS_CIRCLE},
+    {"GILAK", 8, 1, 1, 0, 0, 0x37, 99, 110, 20, 90, 0xFF, 1, 64, 1, KS_NYOGCAG},
     {"LADRANG", 9, 3, 1, 0, 1, 0x9, 54, 84, 51, 50, 0xFF, 1, 76, 4, KS_CIRCLE},
+    {"GONG KEBYAR", 8, 2, 1, 0, 0, 0x3F, 116, 118, 40, 96, 0xFF, 1, 56, 0, KS_NOROT},
 };
 
 /* The forms. GILAK as the University of Guelph / Waterloo teaching gamelan sets it out (Music of the World,

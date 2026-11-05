@@ -225,11 +225,21 @@ static void knob_text(const knob_t *k, int gong, char *b)
     default: put_pct(b, v); break;
     }
 }
+/* MIDI CC OUT: what MIDI in takes as CCs goes out as you change it on the FM-1 (HOME's knobs 20..23, the tempo 24) */
+static void cc_param(int p)
+{
+    if (p >= P_OMBAK && p <= P_BREATH)
+        engine_cc_out(20 + p - P_OMBAK, eng_w.p[p]);
+    else if (p == P_TEMPO)
+        engine_cc_out(24, eng_w.p[p]);
+}
 static void knob_turn_p(const knob_t *k, int gong, int e)
 {
     int p = knob_p(k, gong), mx = kd_max(k->kind), v = eng_w.p[p];
     v = mx < 127 ? clamp_i(v + (e > 0 ? 1 : -1), 0, mx) : clamp_i(v + 2 * e, 0, mx);
     eng_w.p[p] = (uint8_t)v;
+    if (!gong)
+        cc_param(p);
     changed();
 }
 
@@ -237,7 +247,8 @@ typedef struct { const char *name; knob_t k[4]; knob_t algo; } page_t;
 #define NOKNOB {0, 0, 0, 0}
 static const knob_t MACRO[4] = {{"OMBAK", P_OMBAK, KD_OMBAK, 0}, {"DENSITY", P_DENSITY, KD_PCT, 0},
                                 {"SPACE", P_SPACE, KD_PCT, 0}, {"BREATH", P_BREATH, KD_PCT, 0}};
-#define NPG 8
+#define NPG 10
+enum { PG_TIDES = 7, PG_PAN = 8, PG_PAN2 = 9 };  /* (the pages drawn their own way: their places in PAGE) */
 static const page_t PAGE[NPG] = {
     {"ENSEMBLE", {{"CORE", P_L_CORE, KD_LVL, 0}, {"KOTEKAN", P_L_KOT, KD_LVL, 0}, {"REYONG", P_L_REY, KD_LVL, 0},
                   {"GONGS", P_L_GONG, KD_LVL, 0}}, {"GENDER", P_L_GENDER, KD_LVL, 0}},
@@ -249,6 +260,10 @@ static const page_t PAGE[NPG] = {
                 NOKNOB}, {"LEVEL", P_L_REY, KD_LVL, 0}},
     {"GONGS", {{"HUM", P_TO_HUM, KD_ASMADE, 0}, {"SWELL", P_TO_SWELL, KD_ASMADE, 0}, {"BODY", P_TO_BODY, KD_ASMADE, 0},
                {"OMBAK", P_TO_OMBAK, KD_ASMADE, 0}}, {"LEVEL", P_L_GONG, KD_LVL, 0}},
+    {"DRUMS", {{"KENDANG", P_L_KEN, KD_LVL, 0}, {"CENG-CENG", P_L_CENG, KD_LVL, 0}, {"BUSY", P_D_BUSY, KD_ASMADE, 0},
+               {"SLAP", P_D_SLAP, KD_ASMADE, 0}}, NOKNOB},
+    {"SULING", {{"BREATH", P_S_BREATH, KD_ASMADE, 0}, {"VIBRATO", P_S_VIB, KD_ASMADE, 0}, {"REGISTER", P_S_REG, KD_REG, 0},
+                {"GLIDE", P_S_GLIDE, KD_ASMADE, 0}}, {"LEVEL", P_L_SUL, KD_LVL, 0}},
     {"TIDES", {{"RATE", P_T_RATE, KD_TRATE, 0}, {"SPACE", P_T_SPACE, KD_PCT, 0}, {"SWELL", P_T_SWELL, KD_PCT, 0},
                {"OMBAK", P_T_OMBAK, KD_PCT, 0}}, {"SHAPE", P_T_SHAPE, KD_SHAPE, 0}},
     {"PAN", {{"GENDER", P_PAN + PART_GENDER, KD_PAN, 0}, {"CORE", P_PAN + PART_CORE, KD_PAN, 0},
@@ -415,6 +430,7 @@ static void gamelan_go(int e)                     /* PRESETS, LIBRARY's SEL: a g
 {
     e = wrap_i(e, G_ENSEMBLES);
     ui.mine = 0;
+    engine_cc_out(128 + e, 0);                    /* (MIDI CC OUT: the program change) */
     if (!eng_running) {
         engine_ensemble(e);
         changed();
@@ -430,15 +446,19 @@ static void cue(int dir)                          /* FASTER / SLOWER: a STEP (th
     int d = round_i(127.0f / 5.0f * fm_log2f(1.0f + step));
     char t[20];
     eng_w.p[P_TEMPO] = (uint8_t)clamp_i(eng_w.p[P_TEMPO] + dir * (d ? d : 1), 0, 127);
+    cc_param(P_TEMPO);
     changed();
     put_tempo(t, tempo_bpm(eng_w.p[P_TEMPO]));
     say(dir > 0 ? "FASTER " : "SLOWER ", t);
 }
 
 /* GAMELAN (EDIT): the rows */
-enum { ER_TUNING, ER_MODE, ER_FORM, ER_CYCLE, ER_GONGS, ER_CORE, ER_KOT, ER_STYLE, ER_REY, ER_ORN, NER };
+enum { ER_TUNING, ER_MODE, ER_FORM, ER_CYCLE, ER_GONGS, ER_CORE, ER_KOT, ER_STYLE, ER_REY, ER_ORN, ER_KEN, ER_CENG,
+       ER_SUL, NER };
 static const char *const ER_N[NER] = {"TUNING", "MODE", "FORM", "CYCLE", "THE GONGS", "CORE ON", "KOTEKAN ON",
-                                      "KOTEKAN", "REYONG", "ORNAMENTS"};
+                                      "KOTEKAN", "REYONG", "ORNAMENTS", "KENDANG", "CENG-CENG", "SULING"};
+static const uint8_t ER_BIT[NER] = {[ER_REY] = PB_REY, [ER_ORN] = PB_ORN, [ER_KEN] = PB_KEN, [ER_CENG] = PB_CENG,
+                                    [ER_SUL] = PB_SUL};
 static void er_text(int r, char *b)
 {
     const uint8_t *p = eng_w.p;
@@ -451,8 +471,7 @@ static void er_text(int r, char *b)
     case ER_CORE: put_s(b, p[P_CORE_G] ? "GENDER" : "JUBLAG"); break;
     case ER_KOT: put_s(b, p[P_KOT_G] ? "GENDER" : "GANGSA"); break;
     case ER_STYLE: put_s(b, G_STYLE[p[P_K_STYLE] % G_STYLES]); break;
-    case ER_REY: put_s(b, p[P_PARTS] & PB_REY ? "IN" : "OUT"); break;
-    default: put_s(b, p[P_PARTS] & PB_ORN ? "IN" : "OUT"); break;
+    default: put_s(b, p[P_PARTS] & ER_BIT[r] ? "IN" : "OUT"); break;   /* the parts: in or out */
     }
 }
 static void er_turn(int r, int e)
@@ -476,8 +495,7 @@ static void er_turn(int r, int e)
     case ER_GONGS: p[P_AUTO] ^= 1u; break;
     case ER_CORE: p[P_CORE_G] ^= 1u; break;
     case ER_KOT: p[P_KOT_G] ^= 1u; break;
-    case ER_REY: p[P_PARTS] ^= PB_REY; break;
-    default: p[P_PARTS] ^= PB_ORN; break;
+    default: p[P_PARTS] ^= ER_BIT[r]; break;
     }
     changed();
     er_text(r, v);
@@ -485,11 +503,11 @@ static void er_turn(int r, int e)
 }
 
 /* SYSTEM */
-enum { R_HOME, R_SLEEP, R_AUTOPLAY, R_MIDI, R_CLKIN, R_CLKOUT, R_NOTESOUT, R_OUTLOUD, R_USBFULL, R_CORES, R_RESET,
-       R_ABOUT, NROWS };
+enum { R_HOME, R_SLEEP, R_AUTOPLAY, R_MIDI, R_CLKIN, R_CLKOUT, R_NOTESOUT, R_CCOUT, R_OUTLOUD, R_USBFULL, R_CORES,
+       R_RESET, R_ABOUT, NROWS };
 static const char *const ROW_N[NROWS] = {"HOME", "SLEEP", "PLAY AT POWER-ON", "MIDI CHANNEL", "FOLLOW CLOCK IN",
-                                         "MIDI CLOCK OUT", "MIDI NOTES OUT", "OUTPUT LEVEL", "USB AUDIO", "2ND CORE",
-                                         "RESET SOUND", "ABOUT"};
+                                         "MIDI CLOCK OUT", "MIDI NOTES OUT", "MIDI CC OUT", "OUTPUT LEVEL", "USB AUDIO",
+                                         "2ND CORE", "RESET SOUND", "ABOUT"};
 static void row_text(int r, char *b)
 {
     switch (r) {
@@ -499,6 +517,7 @@ static void row_text(int r, char *b)
     case R_CLKIN: put_s(b, !cfg.clock_in ? "OFF" : engine_following() ? "FOLLOWING" : "ON"); break;
     case R_CLKOUT: put_s(b, cfg.clock_out ? "ON" : "OFF"); break;
     case R_NOTESOUT: put_s(b, cfg.notes_out ? "ON" : "OFF"); break;
+    case R_CCOUT: put_s(b, cfg.cc_out ? "ON" : "OFF"); break;
     case R_SLEEP:
         if (ui.sleep)
             put_s(put_i(b, SLEEP_MIN[ui.sleep % SLEEPS]), " MIN");
@@ -522,6 +541,7 @@ static void row_set(int r, int e)                 /* SEL (e 1) or a knob turned 
     case R_CLKIN: cfg.clock_in ^= 1u; break;
     case R_CLKOUT: cfg.clock_out ^= 1u; break;
     case R_NOTESOUT: cfg.notes_out ^= 1u; break;
+    case R_CCOUT: cfg.cc_out ^= 1u; break;
     case R_SLEEP:                                 /* (from now; not saved) */
         ui.sleep = (uint8_t)wrap_i(ui.sleep + (e < 0 ? -1 : 1), SLEEPS);
         ui.sleep_at = plat_ms() + (uint32_t)SLEEP_MIN[ui.sleep] * 60000u;
@@ -626,7 +646,7 @@ static void autosave(void)
 
 /* ================================================================ buttons === */
 static const char *const HELP[NB] = {
-    [B_FX] = "FX. HELD: THROWS", [B_SEL] = "THE PAGE'S ACTION. SHAPE: A/B", [B_ENV] = "SHAPE", [B_LFO] = "LIBRARY",
+    [B_FX] = "FX. HELD: THROWS", [B_SEL] = "THE PAGE'S ACTION. HOME: ANGSEL. SHAPE: A/B", [B_ENV] = "SHAPE", [B_LFO] = "LIBRARY",
     [B_EDIT] = "GAMELAN", [B_GLO] = "SYSTEM, BENCH", [B_HOME] = "HOME", [B_SAVE] = "SAVE. LIBRARY: INTO MINE. HOLDING FX: KEEP",
     [B_ARP] = "THE GONGS: CYCLE OR HAND", [B_SEQ] = "THE CYCLE: START, STOP", [B_REC] = "LOOP THE CORE",
     [B_OCTDN] = "WHITE KEYS DOWN", [B_OCTUP] = "WHITE KEYS UP"};
@@ -712,6 +732,15 @@ static void button(int i)
             lib_open(ui.lrow);
         else if (ui.view == V_SHAPE)
             ab_swap();
+        else if (ui.view == V_HOME) {             /* ANGSEL: the next beat breaks, the ensemble accenting together */
+            if (!eng_running || eng_ending)
+                warn("ANGSEL: THE CYCLE MUST BE PLAYING", 0);
+            else {
+                engine_angsel();
+                engine_cc_out(25, 127);
+                say("ANGSEL", 0);
+            }
+        }
         else if (ui.view == V_BENCH) {
             int on = !engine_load_testing();
             engine_load_test(on);
@@ -818,14 +847,17 @@ static void algo_turn(int e)
         return;
     }
     if (ui.view == V_SHAPE) {
-        knob_turn_p(&PAGE[ui.page].algo, 0, e);
-        say_knob(&PAGE[ui.page].algo, 0);
+        if (PAGE[ui.page].algo.name) {
+            knob_turn_p(&PAGE[ui.page].algo, 0, e);
+            say_knob(&PAGE[ui.page].algo, 0);
+        }
     } else if (ui.view == V_EDIT) {
         er_turn(ui.erow, e);
     } else if (engine_following()) {
         warn("THE MIDI CLOCK LEADS THE TEMPO", 0);
     } else {                                      /* the tempo, in steps of 2.8% (the slow end as fine as the fast) */
         eng_w.p[P_TEMPO] = (uint8_t)clamp_i(eng_w.p[P_TEMPO] + e, 0, 127);
+        cc_param(P_TEMPO);
         changed();
         put_tempo(t, tempo_bpm(eng_w.p[P_TEMPO]));
         say("TEMPO ", t);
@@ -958,6 +990,7 @@ static void cue_tick(float dt)
         while (ui.tempo_acc >= 1.0f || ui.tempo_acc <= -1.0f) {
             int d = ui.tempo_acc > 0.0f ? 1 : -1;
             eng_w.p[P_TEMPO] = (uint8_t)clamp_i(eng_w.p[P_TEMPO] + d, 0, 127);
+            cc_param(P_TEMPO);
             ui.tempo_acc -= (float)d;
             changed();
         }
@@ -1338,11 +1371,11 @@ static void draw_shape(void)
     const page_t *pg = &PAGE[ui.page % NPG];
     int k;
     for (k = 0; k < NPG; k++)
-        disc(120.0f + ((float)k - 3.5f) * 10.0f, 6.0f, 2.2f, k == ui.page ? C_AMB : C_LINE);
-    if (ui.page >= 6) {                           /* PAN, PAN 2: each part's lane, where its sway has taken it */
+        disc(120.0f + ((float)k - (float)(NPG - 1) * 0.5f) * 10.0f, 6.0f, 2.2f, k == ui.page ? C_AMB : C_LINE);
+    if (ui.page >= PG_PAN) {                      /* PAN, PAN 2: each part's lane, where its sway has taken it */
         for (k = 0; k < NPARTS; k++) {
             int y = 26 + k * 22, at = 80 + (eng_w.p[P_PAN + k] * 148) / 127, now = 80 + (int)((eng_pan_now[k] + 1.0f) * 74.0f);
-            int on = ui.page == 6 || eng_w.p[P_SWAY + k];
+            int on = ui.page == PG_PAN || eng_w.p[P_SWAY + k];
             cv_text(6, y - 5, &FONT_XS, pg->k[k].name, on ? C_GRAY : C_DIM);
             cv_rect(80, y, 149, 1, C_LINE);
             cv_rect(154, y - 4, 1, 9, C_DIM);
@@ -1374,7 +1407,7 @@ static void draw_shape(void)
         }
         text_c(cx, 98, &FONT_XS, kn->name, C_GRAY);
     }
-    if (ui.page == 5) {                           /* TIDES: where the tide is now */
+    if (ui.page == PG_TIDES) {                    /* TIDES: where the tide is now */
         int x = 90 + (int)((eng_tide + 1.0f) * 55.0f);
         cv_text(6, 116, &FONT_XS, "THE TIDE", C_GRAY);
         cv_rect(90, 121, 110, 2, C_LINE);
@@ -1516,9 +1549,12 @@ static void draw_knobs(void)
         }
         case V_SHAPE:
             cells(PAGE[ui.page].k, 0, C_HI);
-            knob_text(&PAGE[ui.page].algo, 0, b);
-            put_s(put_s(put_s(put_s(a, "ALGO: "), PAGE[ui.page].algo.name), " "), b);
-            hint("ENV: NEXT", a);
+            if (PAGE[ui.page].algo.name) {        /* (a page may have no ALGO of its own) */
+                knob_text(&PAGE[ui.page].algo, 0, b);
+                put_s(put_s(put_s(put_s(a, "ALGO: "), PAGE[ui.page].algo.name), " "), b);
+                hint("ENV: NEXT", a);
+            } else
+                hint("ENV: NEXT", 0);
             break;
         case V_FX:
             cells(FXROW[ui.fxrow].k, 0, C_HI);

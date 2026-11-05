@@ -7,7 +7,7 @@ wait 100
 expect p9 24
 tap LFO
 wait 100
-turn SELECT 8
+turn SELECT 9
 wait 100
 said MINE 2
 shot library.png
@@ -15,18 +15,18 @@ tap SAVE
 wait 300
 said KEPT IN MINE 2
 expect store_writes >0
-turn SELECT -8
+turn SELECT -9
 tap SEL
 wait 200
 expect p9 76
-turn SELECT 8
+turn SELECT 9
 tap SEL
 wait 200
 expect p9 24
 reboot
 wait 300
 tap LFO
-turn SELECT 7
+turn SELECT 8
 tap SEL
 wait 200
 said EMPTY

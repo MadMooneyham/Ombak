@@ -1,0 +1,80 @@
+# 1.1: GONG KEBYAR with everything in (the kendang, the ceng-ceng) and an ANGSEL; STILL with the suling; the
+# DRUMS and SULING pages; MIDI CC OUT; and 1.0's saved work (format 2) and MINE loading with nothing lost
+listen
+wait 300
+turn PRESET 6
+wait 200
+expect p0 7
+expect parts 63
+tap SEQ
+tapkey w0
+wait 3000
+tapkey w2
+wait 3000
+tap SEL
+wait 100
+said ANGSEL
+tapkey w4
+wait 2000
+wav kebyar.wav
+wait 6000
+wavstop
+shot kebyar.png
+expect clips 0
+expect playing 1
+tap SEQ
+wait 6000
+# STILL: the suling holds the core note
+turn PRESET -4
+wait 200
+expect p0 3
+expect parts 67
+tap SEQ
+tapkey w0
+wait 8000
+wav still_suling.wav
+wait 10000
+wavstop
+expect clips 0
+tap SEQ
+wait 6000
+# the pages
+tap ENV
+wait 100
+turn SELECT 5
+wait 100
+said DRUMS
+shot drums.png
+turn K3 10
+turn SELECT 1
+wait 100
+said SULING
+shot suling.png
+turn ALGO -5
+# MIDI CC OUT: HOME's knobs and the gamelan go out
+tap GLO
+wait 100
+turn SELECT 7
+tap SEL
+wait 100
+said MIDI CC OUT
+tap HOME
+turn PRESET 1
+wait 100
+expect pc_out 4
+turn K2 -64
+wait 100
+expect ccs_out >0
+expect p9 0
+# 1.0's work and MINE (format 2): kept, the new params as made
+oldwork
+wait 300
+expect p9 0
+expect l_ken 100
+tap LFO
+wait 100
+turn SELECT 8
+tap SEL
+wait 200
+said MINE 1
+expect p9 0

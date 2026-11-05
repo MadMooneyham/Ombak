@@ -462,6 +462,14 @@ static int expect(const char *what, const char *val)
             got += (int)notes_out[ch];
     } else if (!strcmp(what, "note_out_last"))
         got = note_out_last;
+    else if (!strcmp(what, "ccs_out"))              /* CCs sent */
+        got = (int)ccs_out;
+    else if (!strcmp(what, "pc_out"))               /* the last program change sent (-1: none) */
+        got = pc_out_last;
+    else if (!strcmp(what, "l_ken"))                /* (a format 3 param: as made after an older work loads) */
+        got = eng_w.p[P_L_KEN];
+    else if (!strcmp(what, "parts"))
+        got = eng_w.p[P_PARTS];
     else if (!strcmp(what, "following"))
         got = engine_following();
     else if (!strcmp(what, "view"))                 /* ui.c V_*: 0 HOME, 1 SHAPE, 2 GAMELAN, 3 FX, 4 LIBRARY, 5 SYSTEM, 6 BENCH */
@@ -623,6 +631,28 @@ int main(int argc, char **argv)
                 eng_w.p[P_K_STYLE] = (uint8_t)atoi(b);
             else
                 eng_w.p[atoi(a) % NP] = (uint8_t)atoi(b);
+        } else if (!strcmp(cmd, "oldwork")) {         /* oldwork: the work playing saved as 1.0 (format 2) saved it,
+                                                       * and MINE 1 holding it too; then power on again */
+            static uint8_t b[1024];
+            uint32_t n = 0, i, sz;
+            uint8_t w2[256];
+            sz = (8u + NP_V2 + 2u + LOOP_MAX + 3u) & ~3u;
+            memset(w2, 0, sizeof w2);
+            memcpy(w2, &eng_w.magic, 4);
+            w2[4] = 2;
+            memcpy(w2 + 8, eng_w.p, NP_V2);
+            w2[8 + NP_V2] = eng_w.loop_len;
+            w2[9 + NP_V2] = eng_w.loop_kept;
+            memcpy(w2 + 10 + NP_V2, eng_w.loop, LOOP_MAX);
+            plat_store_save(OBJ_WORK, w2, sz);
+            b[0] = 'O'; b[1] = 'B'; b[2] = 'M'; b[3] = '1'; b[4] = 2;   /* MINE: its four slots, the first kept */
+            n = 8u + MINE_N;
+            b[8] = 1;
+            for (i = 0; i < MINE_N; i++)
+                memcpy(b + n + i * sz, w2, sz);
+            plat_store_save(OBJ_USER, b, n + MINE_N * sz);
+            held_btn = held_keys = 0;
+            boot();
         } else if (!strcmp(cmd, "splash")) {          /* the boot screen, to a PNG */
             draw_splash(FW_NAME, "LUNAR ECLIPSE FORGE");
             snprintf(out, sizeof out, "%s/%s", dir, a);

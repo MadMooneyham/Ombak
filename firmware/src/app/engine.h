@@ -24,7 +24,8 @@ enum {
     P_ENS, P_TUNING, P_MODE, P_CYCLE,    /* CYCLE: 0 4 beats, 1 8, 2 16, 3 32 */
     P_AUTO,                              /* 1: the cycle keeps the gongs (ARP) */
     P_CORE_G, P_KOT_G,                   /* 1: the core / the kotekan on gendèr (else jublag / gangsa) */
-    P_PARTS,                             /* bit 0 core, 1 kotekan, 2 reyong, 3 ornaments */
+    P_PARTS,                             /* bit 0 core, 1 kotekan, 2 reyong, 3 ornaments, 4 kendang, 5 ceng-ceng,
+                                          * 6 suling */
     /* HOME's knobs and the tempo */
     P_OMBAK,                             /* 0.25 .. 10 Hz: 0.25 x 40^(p/127) */
     P_DENSITY, P_SPACE, P_BREATH,
@@ -54,17 +55,22 @@ enum {
     P_FX, P_FX_END = P_FX + 7,
     /* (format 2) the gong form (G_FORM: 0 FREE, the cycle's length CYCLE's), the kotekan's style (G_STYLE) */
     P_FORM, P_K_STYLE,
+    /* (format 3) DRUMS: the kendang's and the ceng-ceng's levels (100 as made), BUSY, SLAP (64 as made);
+     * SULING: its level, BREATH, VIBRATO, REGISTER (0..2), GLIDE */
+    P_L_KEN, P_L_CENG, P_D_BUSY, P_D_SLAP,
+    P_L_SUL, P_S_BREATH, P_S_VIB, P_S_REG, P_S_GLIDE,
     NP
 };
 #define NP_V1 P_FORM                     /* the params a format 1 work has */
+#define NP_V2 P_L_KEN                    /* a format 2's */
 enum { G_GONG, G_LANANG, G_KEMPUR, G_KEMONG, G_KAJAR, G_N };
 enum { GF_LEVEL, GF_TONE, GF_HUM, GF_RING, GF_PLACES, GF_N };
 #define P_GONG(g, f) (P_GONGS + (g) * GF_N + (f))
 enum { PART_GENDER, PART_CORE, PART_KOT, PART_GONGS, NPARTS };
-enum { PB_CORE = 1, PB_KOT = 2, PB_REY = 4, PB_ORN = 8 };
+enum { PB_CORE = 1, PB_KOT = 2, PB_REY = 4, PB_ORN = 8, PB_KEN = 16, PB_CENG = 32, PB_SUL = 64 };
 
 #define WORK_MAGIC 0x3157424Fu           /* "OBW1" */
-#define WORK_FORMAT 2u
+#define WORK_FORMAT 3u
 #define LOOP_MAX 16
 typedef struct {
     uint32_t magic, format;
@@ -77,6 +83,8 @@ uint8_t engine_param_def(int i);         /* as made */
 void engine_work_defaults(void);
 void engine_ensemble(int e);             /* (main loop, stopped) a gamelan's settings into eng_w */
 void engine_form(int f);                 /* the gong form (and the lanang with it) */
+void engine_angsel(void);                /* an angsel: the next beat breaks, the ensemble accenting together */
+void engine_cc_out(int cc, int v);       /* MIDI CC OUT: a control change (128 + n: program change n) */
 
 /* -------------------------------------------------------------- what it is doing --- */
 extern volatile uint8_t eng_running, eng_ending, eng_pos, eng_loop_state;
@@ -118,7 +126,7 @@ int engine_load_testing(void);
 void engine_out_loud(int on);
 void engine_usb_full(int on);
 void engine_midi_ch(int ch);
-void engine_midi_opts(int clock_out, int clock_in, int notes_out);
+void engine_midi_opts(int clock_out, int clock_in, int notes_out, int cc_out);
 int engine_following(void);              /* 1: an incoming MIDI clock leads the tempo now */
 uint32_t engine_quiet_ms(void);
 
