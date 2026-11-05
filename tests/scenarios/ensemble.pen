@@ -73,7 +73,7 @@ expect p9 0
 expect l_ken 100
 tap LFO
 wait 100
-turn SELECT 8
+turn SELECT 9
 tap SEL
 wait 200
 said MINE 1

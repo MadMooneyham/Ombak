@@ -16,6 +16,10 @@ static const char *const BALI[5] = {"DING", "DONG", "DENG", "DUNG", "DANG"};
 static const char *const GENDER[5] = {"DONG", "DENG", "DUNG", "DANG", "DING"};
 static const char *const ANGKLUNG[4] = {"DONG", "DENG", "DUNG", "DANG"};
 static const char *const JAVA_SL[5] = {"1", "2", "3", "5", "6"};
+/* the selonding of Tenganan Pegeringsingan, McPhee's measurement (Music in Bali, 1966) as the tuning list relays
+ * it: seven tones from about 257.5 Hz, 132 184 181 159 158 255 cents apart. Its players take five-tone modes from
+ * the seven; Ombak plays all seven, numbered */
+static const char *const SEVEN[7] = {"1", "2", "3", "4", "5", "6", "7"};
 
 const g_tuning_t G_TUNING[G_TUNINGS] = {
     {"GENDER WAYANG, PELIATAN", FAM_SLENDRO, 5, 0, 305.5f, {0, 235.419f, 453.560f, 704.786f, 927.453f}, GENDER},
@@ -28,6 +32,7 @@ const g_tuning_t G_TUNING[G_TUNINGS] = {
     {"SAIH PITU, KSATRIA", FAM_PELOG, 7, 1, 312.5f, {0, 153, 315, 552, 706, 848, 1058}, 0},
     {"GONG, PELIATAN", FAM_PELOG, 5, 0, 280.0f, {0, 148.059f, 268.637f, 638.994f, 762.706f}, BALI},
     {"KANYUT MESEM PELOG", FAM_PELOG, 7, 2, 295.0f, {0, 124.521f, 271.058f, 522.809f, 688.207f, 787.819f, 954.515f}, 0},
+    {"SELONDING, TENGANAN", FAM_PELOG, 7, 0, 257.5f, {0, 132, 316, 497, 656, 814, 1069}, SEVEN},
 };
 
 /* each mode: its five of the seven tones (1..7), in order from its first (ding) */
@@ -114,15 +119,20 @@ const char *g_name(const g_scale_t *s, int idx) { return s->name[idx - fdiv(idx,
  * kebyar; the suling with semar pegulingan and STILL. GONG KEBYAR: the twentieth-century style, five-tone
  * pelog from Peliatan's gamelan, fast (76 a minute), brilliant ombak (7 Hz), norot gangsa, everything in;
  * tempo 118 = 76, ombak 116 = 7 Hz) */
+/* (1.2: SELONDING, the sacred iron gamelan of the Bali Aga villages: everything on iron keys over a wooden
+ * trough, the gongs' parts too, as the selonding's own large keys play them; Tenganan's tuning, all seven tones;
+ * no kajar, no drums, no reyong, no suling; stately (48 a minute), a slow, small shimmer (0.6 Hz: ombak 30),
+ * nyog cag interlocking for the nyong-nyong's part) */
 const g_ensemble_t G_ENSEMBLE[G_ENSEMBLES] = {
-    {"GENDER WAYANG", 0, 1, 0, 1, 1, 0x3, 109, 98, 32, 76, 0xFF, 1, 64, 0, KS_CIRCLE},
-    {"SEMAR PEGULINGAN", 6, 2, 1, 0, 0, 0x7B, 99, 95, 44, 64, 0xFF, 1, 64, 0, KS_CIRCLE},
-    {"ANGKLUNG", 4, 1, 1, 0, 0, 0x7, 112, 101, 25, 70, 0xFF, 1, 64, 0, KS_NOROT},
-    {"STILL", 0, 1, 1, 1, 1, 0x43, 54, 25, 51, 38, 89, 0, 108, 0, KS_CIRCLE},
-    {"GONG GEDE", 8, 3, 1, 0, 0, 0x37, 85, 87, 76, 38, 0xFF, 1, 64, 0, KS_CIRCLE},
-    {"GILAK", 8, 1, 1, 0, 0, 0x37, 99, 110, 20, 90, 0xFF, 1, 64, 1, KS_NYOGCAG},
-    {"LADRANG", 9, 3, 1, 0, 1, 0x9, 54, 84, 51, 50, 0xFF, 1, 76, 4, KS_CIRCLE},
-    {"GONG KEBYAR", 8, 2, 1, 0, 0, 0x3F, 116, 118, 40, 96, 0xFF, 1, 56, 0, KS_NOROT},
+    {"GENDER WAYANG", 0, 1, 0, 1, 1, 0x3, 109, 98, 32, 76, 0xFF, 1, 64, 0, KS_CIRCLE, 0},
+    {"SEMAR PEGULINGAN", 6, 2, 1, 0, 0, 0x7B, 99, 95, 44, 64, 0xFF, 1, 64, 0, KS_CIRCLE, 0},
+    {"ANGKLUNG", 4, 1, 1, 0, 0, 0x7, 112, 101, 25, 70, 0xFF, 1, 64, 0, KS_NOROT, 0},
+    {"STILL", 0, 1, 1, 1, 1, 0x43, 54, 25, 51, 38, 89, 0, 108, 0, KS_CIRCLE, 0},
+    {"GONG GEDE", 8, 3, 1, 0, 0, 0x37, 85, 87, 76, 38, 0xFF, 1, 64, 0, KS_CIRCLE, 0},
+    {"GILAK", 8, 1, 1, 0, 0, 0x37, 99, 110, 20, 90, 0xFF, 1, 64, 1, KS_NYOGCAG, 0},
+    {"LADRANG", 9, 3, 1, 0, 1, 0x9, 54, 84, 51, 50, 0xFF, 1, 76, 4, KS_CIRCLE, 0},
+    {"GONG KEBYAR", 8, 2, 1, 0, 0, 0x3F, 116, 118, 40, 96, 0xFF, 1, 56, 0, KS_NOROT, 0},
+    {"SELONDING", 10, 2, 1, 0, 0, 0xB, 30, 101, 51, 64, 0xFF, 0, 76, 0, KS_NYOGCAG, 1},
 };
 
 /* The forms. GILAK as the University of Guelph / Waterloo teaching gamelan sets it out (Music of the World,

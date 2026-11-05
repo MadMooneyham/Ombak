@@ -121,6 +121,7 @@ void engine_ensemble(int e)
     p[P_GONG(G_KAJAR, GF_PLACES)] = g->kajar;
     p[P_TG_RING] = p[P_TB_RING] = g->ring;
     p[P_K_STYLE] = g->style;
+    p[P_IRON] = g->iron;
     engine_form(g->form);
 }
 
@@ -547,6 +548,19 @@ static float rnd01(void)
 static bars_handle_t play(int inst, int part, float hz, float vel, float pan, uint32_t delay, int gong)
 {
     bars_strike_t s;
+    if (eng_w.p[P_IRON]) {                       /* IRON (the selonding): every key iron; its large keys the gongs' */
+        if (inst == IN_KAJAR) {
+            bars_handle_t none = {-1, 0};
+            return none;
+        }
+        if (BARS_IS_GONG(inst)) {
+            inst = IN_IRON_LOW;
+            while (hz < 110.0f)
+                hz *= 2.0f;
+        } else if (inst <= IN_REYONG) {
+            inst = IN_IRON;
+        }
+    }
     s.inst = (uint8_t)inst;
     s.part = (uint8_t)part;
     s.hz = hz;
@@ -564,7 +578,7 @@ static bars_handle_t play(int inst, int part, float hz, float vel, float pan, ui
         s.bright *= e2(P_TR_BRIGHT);
         s.ring = e4(P_TR_RING);
         s.mallet = x128(P_TR_MALLET) * 2.0f;
-    } else if (inst < IN_GONG) {                 /* the bars: gangsa, jublag, jegogan */
+    } else if (!BARS_IS_GONG(inst)) {            /* the bars: gangsa, jublag, jegogan; the iron keys */
         s.bright *= e2(P_TB_BRIGHT);
         s.ring = e4(P_TB_RING);
         s.mallet = x128(P_TB_MALLET) * 2.0f;

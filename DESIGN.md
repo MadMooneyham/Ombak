@@ -435,6 +435,24 @@ in the most logical order (sounds first, so the cheat sheet and the emulator sho
 - **The cheat sheet** (`web/cheatsheet/`, with a PDF printed by headless Chrome), linked from the hub's card.
 - Not done: selonding (the sacred iron ensemble; it needs careful sources).
 
+## 1.2: the selonding; the black keys re-laid
+
+David (2026-11-05): re-evaluate the keys for bringing instruments in and out; drop the tempo keys (a knob does
+it); add the selonding, best effort on authenticity.
+
+- **The keys:** black 1-5 the gongs; 6-10 KOTEKAN, REYONG, ORNAMENTS, DRUMS (kendang and ceng-ceng together:
+  either in, both go out), SULING, in and out, lit while in, held to shape (their SHAPE pages' knobs); 11 the
+  ENDING, its hold gaining GLIDE (P_C_GLIDE). The tempo is ALGO on HOME, which already glides; STEP (P_C_STEP)
+  is kept in the work, unused. Holding SLOWER, the meditative gesture, became ALGO turned down.
+- **The selonding:** McPhee's South Tenganan tuning as the Mills tuning list relays it (0 132 316 497 656 814
+  1069 cents, ~257.5 Hz; the list's author notes Schlager's monograph gives no cents), all seven tones numbered.
+  IN_IRON (iron key over a trough: a long fundamental, a strong overtone near 2.74, a hard mallet, a little body,
+  a quarter of the ombak) and IN_IRON_LOW (its large keys, which play the gongs' part, raised to 110 Hz and up).
+  P_IRON (format 4) puts every pitched part on iron and the gongs on the large keys; the kajar is silent. GAMELAN's
+  KEYS row sets it on any gamelan. SELONDING (gamelan 9): no kajar, drums, reyong or suling; 48 a minute, ombak
+  0.6 Hz, nyog cag for the nyong-nyong's interlocking. Its five-tone modes are not offered (no source in hand).
+- Tests: `selonding.pen` (iron, the keys, a held part not switching, the ending on 11, bronze again).
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.

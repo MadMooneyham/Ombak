@@ -470,6 +470,8 @@ static int expect(const char *what, const char *val)
         got = eng_w.p[P_L_KEN];
     else if (!strcmp(what, "parts"))
         got = eng_w.p[P_PARTS];
+    else if (!strcmp(what, "iron"))
+        got = eng_w.p[P_IRON];
     else if (!strcmp(what, "following"))
         got = engine_following();
     else if (!strcmp(what, "view"))                 /* ui.c V_*: 0 HOME, 1 SHAPE, 2 GAMELAN, 3 FX, 4 LIBRARY, 5 SYSTEM, 6 BENCH */

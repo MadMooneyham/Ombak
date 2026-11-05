@@ -58,7 +58,7 @@ static void work_sane(work_t *w)
     static const uint8_t MAX_OF[][2] = {{P_ENS, G_ENSEMBLES - 1}, {P_TUNING, G_TUNINGS - 1}, {P_MODE, 3}, {P_CYCLE, 3},
                                         {P_AUTO, 1}, {P_CORE_G, 1}, {P_KOT_G, 1}, {P_PARTS, 127}, {P_K_SUB, 4},
                                         {P_K_REG, 2}, {P_R_RATE, 1}, {P_R_REG, 2}, {P_O_REG, 2}, {P_E_AFTER, 1},
-                                        {P_FORM, G_FORMS - 1}, {P_K_STYLE, G_STYLES - 1}, {P_S_REG, 2}};
+                                        {P_FORM, G_FORMS - 1}, {P_K_STYLE, G_STYLES - 1}, {P_S_REG, 2}, {P_IRON, 1}};
     int i, g;
     for (i = 0; i < NP; i++)
         w->p[i] &= 0x7Fu;
@@ -83,7 +83,7 @@ static void work_sane(work_t *w)
  * params it did not have as made. */
 static int work_np(uint32_t format)
 {
-    return format == 1u ? NP_V1 : format == 2u ? NP_V2 : format == WORK_FORMAT ? NP : -1;
+    return format == 1u ? NP_V1 : format == 2u ? NP_V2 : format == 3u ? NP_V3 : format == WORK_FORMAT ? NP : -1;
 }
 static uint32_t work_size(int np) { return (8u + (uint32_t)np + 2u + LOOP_MAX + 3u) & ~3u; }
 _Static_assert(((8u + NP + 2u + LOOP_MAX + 3u) & ~3u) == sizeof(work_t), "the work's layout");

@@ -5,8 +5,8 @@
 #pragma once
 #include <stdint.h>
 
-#define G_TUNINGS 10
-#define G_ENSEMBLES 8
+#define G_TUNINGS 11
+#define G_ENSEMBLES 9
 #define G_FORMS 5
 #define G_STYLES 4
 #define G_MAXN 7
@@ -48,6 +48,7 @@ typedef struct {
     uint8_t kajar;                       /* the kajar's places */
     uint8_t ring;                        /* the bars' RING (64 as made) */
     uint8_t form, style;                 /* the gong form (G_FORM), the kotekan's style */
+    uint8_t iron;                        /* 1: every part on iron keys, the gongs too (selonding) */
 } g_ensemble_t;
 extern const g_ensemble_t G_ENSEMBLE[G_ENSEMBLES];
 

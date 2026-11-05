@@ -3,8 +3,8 @@
 wait 300
 turn K2 30
 wait 100
-key b9 down
-key b9 up
+key b6 down
+key b6 up
 tap SEQ
 tapkey w0
 wait 700

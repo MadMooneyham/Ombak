@@ -11,7 +11,7 @@ and the communities who play them.
 **[MANUAL.md](MANUAL.md)** is how to play it. See [DESIGN.md](DESIGN.md) for where it stands. To hear the sound,
 open [prototype/index.html](prototype/index.html) in a browser and play it from the computer keyboard.
 
-Ombak 1.1 installs from https://madmooneyham.github.io/Ombak/install/ (Chrome); [BUILDING.md](BUILDING.md) builds it. It runs on
+Ombak 1.2 installs from https://madmooneyham.github.io/Ombak/install/ (Chrome); [BUILDING.md](BUILDING.md) builds it. It runs on
 [Penumbra](https://github.com/MadMooneyham/Penumbra)'s platform; [LICENSING.md](LICENSING.md) credits everyone
 whose work it stands on.
 

@@ -22,7 +22,8 @@
 #define BARS_PARTS 4                     /* the buses: your gendèr, the core, the elaboration, the gongs */
 
 enum { IN_GENDER, IN_GANGSA, IN_JUBLAG, IN_JEGOGAN, IN_REYONG, IN_GONG, IN_KEMPUR, IN_KEMONG, IN_KAJAR,
-       IN_WADON, IN_LANANG, IN_CENG, IN_N };     /* the kendang's two drums (wadon low, lanang high), the ceng-ceng */
+       IN_WADON, IN_LANANG, IN_CENG,             /* the kendang's two drums (wadon low, lanang high), the ceng-ceng */
+       IN_IRON, IN_IRON_LOW, IN_N };             /* the selonding's iron keys; its large keys, playing the gongs' part */
 #define BARS_IS_GONG(i) ((i) >= IN_GONG && (i) <= IN_KAJAR)
 
 /* phases are fixed point: a turn is 2^32, so they wrap by themselves and the sine table's index and fraction

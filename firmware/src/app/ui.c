@@ -15,11 +15,11 @@
  *   SYSTEM   GLO: the settings; GLO again: BENCH
  * Buttons act when let go; held, they say what they do. SEQ the cycle, ARP the gongs (the cycle or the
  * hand), REC / PLAY the loop (PLAY held, or REC with PLAY: clear), OCT- / OCT+, SAVE.
- * Keys: white, your gendèr and the next core note; black 1-5 the gongs, 6-8 FASTER, SLOWER, the ENDING,
- * 9-11 the kotekan, reyong and ornaments in and out.
- * Holds: a gong (LEVEL, TONE, HUM, RING; ALGO its PLACES), FASTER / SLOWER (STEP, GLIDE; held, the tempo
- * keeps moving), the ENDING (AFTER, SLOWING, THINNING), a part (DENSITY or RATE or PICKUP, REGISTER, TURN or
- * OCTAVES, SPARSE; ALGO its level; it toggles when let go only if the knobs were not turned), a white key
+ * Keys: white, your gendèr and the next core note; black 1-5 the gongs, 6-10 the kotekan, reyong, ornaments,
+ * drums and suling in and out, 11 the ENDING. (The tempo is ALGO's: 1.2 gave its keys to the parts.)
+ * Holds: a gong (LEVEL, TONE, HUM, RING; ALGO its PLACES), the ENDING (AFTER, SLOWING, THINNING, GLIDE: how the
+ * tempo moves), a part (its own four, as its SHAPE page or the kotekan's DENSITY, REGISTER, TURN, SPARSE; ALGO its
+ * level; it toggles when let go only if the knobs were not turned), a white key
  * (BENDS on its note: SHIMMER, OMBAK, PLACE, SWELL), FX (THROWS: SHIMMER, FREEZE, DIP, HUSH; ALGO the
  * OMBAK). Bends and throws drift back when let go; SAVE while holding FX keeps the throws.
  * The screen is three bands (header, main, knob strip), each drawn into Felucca's canvas and blitted only
@@ -32,7 +32,10 @@
 static const int8_t KEY_WHITE[NKEYS] = {0, -1, 1, -1, 2, -1, 3, 4, -1, 5, -1, 6, 7, -1, 8, -1, 9, -1, 10, 11, -1, 12, -1, 13, 14, -1, 15};
 static const int8_t KEY_BLACK[NKEYS] = {-1, 0, -1, 1, -1, 2, -1, -1, 3, -1, 4, -1, -1, 5, -1, 6, -1, 7, -1, -1, 8, -1, 9, -1, -1, 10, -1};
 static uint8_t BLACK_KEY[11], WHITE_KEY[16];
-enum { BK_FASTER = 5, BK_SLOWER = 6, BK_ENDING = 7, BK_KOT = 8, BK_REY = 9, BK_ORN = 10 };
+/* the black keys after the gongs (1.2): the parts in and out, 6..10; the ending, 11 (the tempo is ALGO's) */
+enum { BK_KOT = 5, BK_REY = 6, BK_ORN = 7, BK_DRUMS = 8, BK_SUL = 9, BK_ENDING = 10, NPARTKEYS = 5 };
+static const uint8_t PART_BIT[NPARTKEYS] = {PB_KOT, PB_REY, PB_ORN, PB_KEN | PB_CENG, PB_SUL};
+static const char *const PART_NAME[NPARTKEYS] = {"KOTEKAN", "REYONG", "ORNAMENTS", "DRUMS", "SULING"};
 
 enum { V_HOME, V_SHAPE, V_EDIT, V_FX, V_LIB, V_SYSTEM, V_BENCH, NVIEWS };
 static const char *const VIEW_N[NVIEWS] = {"HOME", "SHAPE", "GAMELAN", "FX", "LIBRARY", "SYSTEM", "BENCH"};
@@ -62,7 +65,6 @@ typedef struct {
     float thr[TH_N];                       /* the throws: SHIMMER, FREEZE, DIP, HUSH, OMBAK */
     int16_t thr_sent[TH_N];
     uint8_t thr_kept, thr_back;
-    float tempo_acc;                       /* a held cue's tempo moving, between its steps */
     int8_t last_pend_mode, last_pend_ens;
     uint8_t last_loop;
     uint8_t rs_ask;
@@ -282,16 +284,19 @@ static const page_t FXROW[NFXROWS] = {
 /* the holds' knobs */
 static const page_t GONG_HOLD = {"", {{"LEVEL", GF_LEVEL, KD_LVL, 1}, {"TONE", GF_TONE, KD_TONE, 1}, {"HUM", GF_HUM, KD_ASMADE, 1},
                                       {"RING", GF_RING, KD_ASMADE, 1}}, {"PLACES", GF_PLACES, KD_PLACES, 1}};
-static const page_t CUE_HOLD = {"", {{"STEP", P_C_STEP, KD_STEP, 0}, {"GLIDE", P_C_GLIDE, KD_GLIDE, 0}, NOKNOB, NOKNOB}, NOKNOB};
 static const page_t END_HOLD = {"ENDING", {{"AFTER", P_E_AFTER, KD_AFTER, 0}, {"SLOWING", P_E_SLOW, KD_ASMADE, 0},
-                                           {"THINNING", P_E_THIN, KD_ASMADE, 0}, NOKNOB}, NOKNOB};
-static const page_t PART_HOLD[3] = {
+                                           {"THINNING", P_E_THIN, KD_ASMADE, 0}, {"GLIDE", P_C_GLIDE, KD_GLIDE, 0}}, NOKNOB};
+static const page_t PART_HOLD[NPARTKEYS] = {
     {"KOTEKAN", {{"DENSITY", P_K_SUB, KD_SUB, 0}, {"REGISTER", P_K_REG, KD_REG, 0}, {"TURN", P_K_TURN, KD_TURN, 0},
                  {"SPARSE", P_K_SPARSE, KD_PCT, 0}}, {"LEVEL", P_L_KOT, KD_LVL, 0}},
     {"REYONG", {{"RATE", P_R_RATE, KD_RRATE, 0}, {"REGISTER", P_R_REG, KD_REG, 0}, {"TURN", P_R_TURN, KD_TURN, 0},
                 {"SPARSE", P_R_SPARSE, KD_PCT, 0}}, {"LEVEL", P_L_REY, KD_LVL, 0}},
     {"ORNAMENTS", {{"PICKUP", P_O_PICK, KD_PICK, 0}, {"OCTAVES", P_O_OCT, KD_ASMADE, 0}, {"REGISTER", P_O_REG, KD_REG, 0},
                    {"SPARSE", P_O_SPARSE, KD_PCT, 0}}, {"LEVEL", P_L_ORN, KD_LVL, 0}},
+    {"DRUMS", {{"KENDANG", P_L_KEN, KD_LVL, 0}, {"CENG-CENG", P_L_CENG, KD_LVL, 0}, {"BUSY", P_D_BUSY, KD_ASMADE, 0},
+               {"SLAP", P_D_SLAP, KD_ASMADE, 0}}, NOKNOB},
+    {"SULING", {{"BREATH", P_S_BREATH, KD_ASMADE, 0}, {"VIBRATO", P_S_VIB, KD_ASMADE, 0}, {"REGISTER", P_S_REG, KD_REG, 0},
+                {"GLIDE", P_S_GLIDE, KD_ASMADE, 0}}, {"LEVEL", P_L_SUL, KD_LVL, 0}},
 };
 static const char *const GONG_N[G_N] = {"GONG", "GONG LANANG", "KEMPUR", "KEMONG", "KAJAR"};
 static const char *const BEND_N[4] = {"SHIMMER", "OMBAK", "PLACE", "SWELL"};
@@ -306,7 +311,7 @@ static int layer(void)
         return L_THROW;
     if (ui.hold_bk >= 0 && now - ui.kdown_t[BLACK_KEY[ui.hold_bk]] >= HOLD_MS) {
         int k = ui.hold_bk;
-        return k < G_N ? L_GONG : k <= BK_SLOWER ? L_CUE : k == BK_ENDING ? L_END : L_PART;
+        return k < G_N ? L_GONG : k == BK_ENDING ? L_END : L_PART;
     }
     if (ui.hold_w >= 0 && now - ui.kdown_t[WHITE_KEY[ui.hold_w]] >= HOLD_MS)
         return L_BEND;
@@ -316,7 +321,6 @@ static const page_t *hold_page(int l)
 {
     switch (l) {
     case L_GONG: return &GONG_HOLD;
-    case L_CUE: return &CUE_HOLD;
     case L_END: return &END_HOLD;
     case L_PART: return &PART_HOLD[ui.hold_bk - BK_KOT];
     default: return 0;
@@ -440,22 +444,11 @@ static void gamelan_go(int e)                     /* PRESETS, LIBRARY's SEL: a g
         say(G_ENSEMBLE[e].name, e == eng_w.p[P_ENS] ? "" : " AT THE GONG");
     }
 }
-static void cue(int dir)                          /* FASTER / SLOWER: a STEP (the cycle glides to it) */
-{
-    float step = 0.05f + 0.45f * (float)eng_w.p[P_C_STEP] / 127.0f;
-    int d = round_i(127.0f / 5.0f * fm_log2f(1.0f + step));
-    char t[20];
-    eng_w.p[P_TEMPO] = (uint8_t)clamp_i(eng_w.p[P_TEMPO] + dir * (d ? d : 1), 0, 127);
-    cc_param(P_TEMPO);
-    changed();
-    put_tempo(t, tempo_bpm(eng_w.p[P_TEMPO]));
-    say(dir > 0 ? "FASTER " : "SLOWER ", t);
-}
 
 /* GAMELAN (EDIT): the rows */
-enum { ER_TUNING, ER_MODE, ER_FORM, ER_CYCLE, ER_GONGS, ER_CORE, ER_KOT, ER_STYLE, ER_REY, ER_ORN, ER_KEN, ER_CENG,
-       ER_SUL, NER };
-static const char *const ER_N[NER] = {"TUNING", "MODE", "FORM", "CYCLE", "THE GONGS", "CORE ON", "KOTEKAN ON",
+enum { ER_TUNING, ER_MODE, ER_FORM, ER_CYCLE, ER_GONGS, ER_METAL, ER_CORE, ER_KOT, ER_STYLE, ER_REY, ER_ORN, ER_KEN,
+       ER_CENG, ER_SUL, NER };
+static const char *const ER_N[NER] = {"TUNING", "MODE", "FORM", "CYCLE", "THE GONGS", "KEYS", "CORE ON", "KOTEKAN ON",
                                       "KOTEKAN", "REYONG", "ORNAMENTS", "KENDANG", "CENG-CENG", "SULING"};
 static const uint8_t ER_BIT[NER] = {[ER_REY] = PB_REY, [ER_ORN] = PB_ORN, [ER_KEN] = PB_KEN, [ER_CENG] = PB_CENG,
                                     [ER_SUL] = PB_SUL};
@@ -468,6 +461,7 @@ static void er_text(int r, char *b)
     case ER_FORM: put_s(b, G_FORM[p[P_FORM] % G_FORMS].name); break;
     case ER_CYCLE: put_s(put_i(b, engine_cycle_len()), " BEATS"); break;
     case ER_GONGS: put_s(b, p[P_AUTO] ? "THE CYCLE" : "BY HAND"); break;
+    case ER_METAL: put_s(b, p[P_IRON] ? "IRON (SELONDING)" : "BRONZE"); break;
     case ER_CORE: put_s(b, p[P_CORE_G] ? "GENDER" : "JUBLAG"); break;
     case ER_KOT: put_s(b, p[P_KOT_G] ? "GENDER" : "GANGSA"); break;
     case ER_STYLE: put_s(b, G_STYLE[p[P_K_STYLE] % G_STYLES]); break;
@@ -493,6 +487,7 @@ static void er_turn(int r, int e)
         break;
     case ER_STYLE: p[P_K_STYLE] = (uint8_t)wrap_i(p[P_K_STYLE] + d, G_STYLES); break;
     case ER_GONGS: p[P_AUTO] ^= 1u; break;
+    case ER_METAL: p[P_IRON] ^= 1u; break;
     case ER_CORE: p[P_CORE_G] ^= 1u; break;
     case ER_KOT: p[P_KOT_G] ^= 1u; break;
     default: p[P_PARTS] ^= ER_BIT[r]; break;
@@ -892,10 +887,7 @@ static void input(void)
                 ui.hold_turned = 0;
                 if (bk < G_N)
                     engine_gong(bk);
-                else if (bk == BK_FASTER || bk == BK_SLOWER) {
-                    cue(bk == BK_FASTER ? 1 : -1);
-                    ui.tempo_acc = 0.0f;
-                } else if (bk == BK_ENDING) {
+                else if (bk == BK_ENDING) {
                     if (eng_running) {
                         engine_end();
                         say(eng_w.p[P_E_AFTER] ? "ENDING: THE GONG AFTER NEXT" : "ENDING: AT THE NEXT GONG", 0);
@@ -912,12 +904,16 @@ static void input(void)
                 if (ui.hold_w == w)
                     ui.hold_w = -1;
             } else if (bk >= 0) {
-                if (bk >= BK_KOT && !(ui.hold_bk == bk && ui.hold_turned)) {   /* a part: in or out, unless shaped */
-                    static const uint8_t BIT[3] = {PB_KOT, PB_REY, PB_ORN};
-                    static const char *const NM[3] = {"KOTEKAN", "REYONG", "ORNAMENTS"};
-                    eng_w.p[P_PARTS] ^= BIT[bk - BK_KOT];
+                if (bk >= BK_KOT && bk < BK_KOT + NPARTKEYS && !(ui.hold_bk == bk && ui.hold_turned)) {
+                    /* a part: in or out, unless shaped (DRUMS: the kendang and the ceng-ceng together; either in:
+                     * both out) */
+                    const uint8_t bit = PART_BIT[bk - BK_KOT];
+                    if (eng_w.p[P_PARTS] & bit)
+                        eng_w.p[P_PARTS] &= (uint8_t)~bit;
+                    else
+                        eng_w.p[P_PARTS] |= bit;
                     changed();
-                    say(NM[bk - BK_KOT], eng_w.p[P_PARTS] & BIT[bk - BK_KOT] ? " IN" : " OUT");
+                    say(PART_NAME[bk - BK_KOT], eng_w.p[P_PARTS] & bit ? " IN" : " OUT");
                 }
                 if (ui.hold_bk == bk)
                     ui.hold_bk = -1;
@@ -980,22 +976,6 @@ static void input(void)
         set_view(V_HOME);
 }
 
-/* a cue held: the tempo keeps moving, a STEP every two seconds */
-static void cue_tick(float dt)
-{
-    int l = layer();
-    if (l == L_CUE && !ui.hold_turned) {
-        float step = 0.05f + 0.45f * (float)eng_w.p[P_C_STEP] / 127.0f;
-        ui.tempo_acc += (ui.hold_bk == BK_FASTER ? 1.0f : -1.0f) * 127.0f / 5.0f * fm_log2f(1.0f + step) * dt * 0.5f;
-        while (ui.tempo_acc >= 1.0f || ui.tempo_acc <= -1.0f) {
-            int d = ui.tempo_acc > 0.0f ? 1 : -1;
-            eng_w.p[P_TEMPO] = (uint8_t)clamp_i(eng_w.p[P_TEMPO] + d, 0, 127);
-            cc_param(P_TEMPO);
-            ui.tempo_acc -= (float)d;
-            changed();
-        }
-    }
-}
 
 /* ================================================================== drawing === */
 #define HDR_H 20
@@ -1205,8 +1185,6 @@ static void draw_header(void)
                         ui.view == V_FX ? FXROW[ui.fxrow].name : VIEW_N[ui.view];
         if (l == L_GONG)
             t = GONG_N[ui.hold_bk];
-        else if (l == L_CUE)
-            t = ui.hold_bk == BK_FASTER ? "FASTER" : "SLOWER";
         else if (l != L_PAGE && l != L_BEND && l != L_THROW)
             t = hold_page(l)->name;
         else if (l == L_THROW)
@@ -1620,16 +1598,12 @@ static void leds(void)
         btn |= 1u << B_FX;
     for (i = 0; i < G_N; i++)                     /* the gongs, dim */
         kdim |= 1u << BLACK_KEY[i];
-    for (i = BK_FASTER; i <= BK_ENDING; i++)
-        kdim |= 1u << BLACK_KEY[i];
-    {
-        static const uint8_t BIT[3] = {PB_KOT, PB_REY, PB_ORN};
-        for (i = 0; i < 3; i++)                   /* the parts: lit while in */
-            if (eng_w.p[P_PARTS] & BIT[i])
-                keys |= 1u << BLACK_KEY[BK_KOT + i];
-            else
-                kdim |= 1u << BLACK_KEY[BK_KOT + i];
-    }
+    kdim |= 1u << BLACK_KEY[BK_ENDING];
+    for (i = 0; i < NPARTKEYS; i++)               /* the parts: lit while in */
+        if (eng_w.p[P_PARTS] & PART_BIT[i])
+            keys |= 1u << BLACK_KEY[BK_KOT + i];
+        else
+            kdim |= 1u << BLACK_KEY[BK_KOT + i];
     keys |= ui.keys;
     plat_glow(1);
     plat_keys_dim(kdim);
@@ -1715,7 +1689,6 @@ void ui_frame(void)
     float dt = fm_minf((float)(now - t0) * 0.001f, 0.1f);
     t0 = now;
     input();
-    cue_tick(dt);
     moves_tick(dt);
     if ((eng_pend_mode != ui.last_pend_mode && eng_pend_mode < 0) || (eng_pend_ens != ui.last_pend_ens && eng_pend_ens < 0))
         changed();                                /* (the gong brought a mode or a gamelan: it is saved) */

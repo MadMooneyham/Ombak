@@ -81,9 +81,20 @@ static const inst_spec_t INST[IN_N] = {
     {0.10f, 0.0f, 0.0f, 3, {{1.0f, 0.5f, 0.22f, 0.001f, 1.47f, 3.0f, 0.12f}, {1.83f, 0.45f, 0.16f, 0.001f, 2.21f, 2.4f, 0.1f},
                             {2.71f, 0.35f, 0.12f, 0.001f, 0, 0, 0}},
      0, 0, 0, 1.0f, 7.0f, 0.8f, 0.07f},
+    /* selonding: thick iron keys over a wooden trough: a long, glassy fundamental, a strong metallic overtone near
+     * 2.7, a hard mallet's click; the trough's body a little warmth (not a tube's bloom). Iron is not tuned in
+     * beating pairs as bronze is: a small share of the ombak */
+    {0.20f, 0.25f, 0.0f, 4, {{1.0f, 1.0f, 4.5f, 0.002f, 1.0f, 1.1f, 0.09f}, {1.0f, 0.14f, 6.0f, 0.05f, 0, 0, 0},
+                             {2.74f, 0.34f, 1.7f, 0.002f, 0, 0, 0}, {5.12f, 0.12f, 0.5f, 0.002f, 0, 0, 0}},
+     0, 0, 0, 0.16f, 5.0f, 1.6f, 0.015f},
+    /* its large keys, which play the gongs' part: lower, longer, darker */
+    {0.30f, 0.25f, 0.0f, 3, {{1.0f, 1.0f, 9.0f, 0.004f, 1.0f, 0.7f, 0.2f}, {1.0f, 0.2f, 11.0f, 0.08f, 0, 0, 0},
+                             {2.72f, 0.24f, 3.0f, 0.003f, 0, 0, 0}},
+     0, 0, 0, 0.08f, 4.0f, 1.4f, 0.03f},
 };
 static const char *const INST_N[IN_N] = {"GENDER", "GANGSA", "JUBLAG", "JEGOGAN", "REYONG", "GONG", "KEMPUR",
-                                         "KEMONG", "KAJAR", "KENDANG WADON", "KENDANG LANANG", "CENG-CENG"};
+                                         "KEMONG", "KAJAR", "KENDANG WADON", "KENDANG LANANG", "CENG-CENG",
+                                         "SELONDING", "SELONDING GONG"};
 const char *bars_inst_name(int inst) { return inst >= 0 && inst < IN_N ? INST_N[inst] : ""; }
 
 static float fall(float secs60)                  /* a sample's factor for a fall of 60 dB in secs60 */

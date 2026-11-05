@@ -118,10 +118,10 @@ kbd { font: 600 .85em ui-monospace, Menlo, monospace; background: var(--card); b
     <li><b>Switch it on</b>, then press <b>SEQ</b> (<kbd>Space</kbd>): the gong opens the cycle.</li>
     <li><b>Play a white key</b> (<kbd>Q</kbd>–<kbd>K</kbd>) now and then: your gendèr sounds, and the ensemble lands on that note at the next beat, the kotekan turning toward it.</li>
     <li><b>Turn KNOB 2</b> (DENSITY) up for a flowing kotekan, down for the core alone.</li>
-    <li><b>Turn PRESETS</b> to another gamelan; it arrives with the gong. Try GONG KEBYAR, and press <b>SEL</b> on HOME for an angsel.</li>
-    <li><b>Open STILL</b> and hold black key 7 (<kbd>7</kbd>, SLOWER) for meditation: a note every ten seconds, the suling breathing.</li>
+    <li><b>Turn PRESETS</b> to another gamelan; it arrives with the gong. Try GONG KEBYAR, and press <b>SEL</b> on HOME for an angsel, or SELONDING, the iron gamelan.</li>
+    <li><b>Open STILL</b> and turn ALGORITHM (<kbd>←</kbd>) down for meditation: a note every ten seconds, the suling breathing.</li>
     <li><b>Hold FX and turn KNOB 2</b> to FREEZE the space. Let go and it drifts back.</li>
-    <li><b>Black key 8</b> (<kbd>8</kbd>) is the ending: the ensemble slows and closes on the gong.</li>
+    <li><b>Black keys 6–10</b> (<kbd>6</kbd>–<kbd>0</kbd>) bring the parts in and out; <b>black key 11</b> (<kbd>-</kbd>) is the ending: the ensemble slows and closes on the gong.</li>
     <li><b>Hold any button</b> a moment and the screen says what it does.</li>
   </ol>
 </section>
@@ -204,8 +204,8 @@ const DOES = { MASTER: "Volume.", SELECT: "On HOME: the mode, at the next gong. 
   REC: "Loop the core from the next cycle. With PLAY: clear." };
 const BLACK_DOES = ["The gong", "The gong lanang", "The kempur", "The kemong", "The kajar"]
   .map((v) => `${v}: strike it. Held: shape it; ALGORITHM, its places.`)
-  .concat(["FASTER. Held: it keeps going.", "SLOWER. Held: it keeps going.", "The ending: slowing, closing on the gong. Held: shape it."],
-          ["kotekan", "reyong", "ornaments"].map((s) => `The ${s} in or out. Held: shape it.`));
+  .concat(["kotekan", "reyong", "ornaments", "drums (the kendang and the ceng-ceng)", "suling"].map((s) => `The ${s} in or out. Held: shape it.`),
+          ["The ending: slowing, closing on the gong. Held: shape it, and the tempo's glide."]);
 const SPOKEN = { "OCT-": "OCT minus", "OCT+": "OCT plus" };
 
 const $ = (id) => document.getElementById(id);

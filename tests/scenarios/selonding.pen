@@ -1,0 +1,55 @@
+# 1.2: SELONDING, everything on iron keys, the gongs' part on its large keys, Tenganan's seven tones; then the
+# black keys' new layout: 6..10 the parts in and out (8 the drums together, 9 the suling), 11 the ending
+listen
+wait 300
+turn PRESET 7
+wait 200
+expect p0 8
+expect p1 10
+expect iron 1
+expect parts 11
+tap SEQ
+tapkey w0
+wait 2500
+tapkey w4
+wait 2500
+tapkey w6
+wait 2500
+wav selonding.wav
+tapkey w2
+wait 8000
+wavstop
+shot selonding.png
+expect clips 0
+expect playing 1
+# the drums and the suling, in and out from their keys
+tapkey b8
+wait 100
+said DRUMS IN
+expect parts 59
+tapkey b9
+wait 100
+said SULING IN
+expect parts 123
+tapkey b8
+wait 100
+said DRUMS OUT
+expect parts 75
+# a part held and shaped does not switch
+key b9 down
+wait 400
+turn ALGO -5
+key b9 up
+wait 100
+expect parts 75
+# the ending, on 11
+tapkey b10
+wait 100
+said ENDING
+wait 60000
+expect playing 0
+# another gamelan: bronze again
+turn PRESET -1
+wait 200
+expect p0 7
+expect iron 0

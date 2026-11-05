@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ombak Cheat Sheet</title>
-<meta name="description" content="Ombak 1.1 for the M-VAVE FM-1 on one page: every control, the holds, the pages and the gamelan.">
+<meta name="description" content="Ombak 1.2 for the M-VAVE FM-1 on one page: every control, the holds, the pages and the gamelan.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=Noto+Sans+Balinese&display=swap">
@@ -70,7 +70,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
 <div class="sheet">
 <header>
   <h1>OMBAK</h1>
-  <span class="sub">1.1 · a gamelan-inspired instrument for the M-VAVE FM-1 · cheat sheet</span>
+  <span class="sub">1.2 · a gamelan-inspired instrument for the M-VAVE FM-1 · cheat sheet</span>
   <nav class="links" aria-label="Ombak pages"><a href="../emu/">Play it in the browser</a><a href="../install/">Install</a><a href="https://github.com/MadMooneyham/Ombak/blob/main/MANUAL.md">Manual</a><a href="ombak-cheatsheet.pdf">PDF</a></nav>
 </header>
 
@@ -81,7 +81,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
     Knobs 1 to 4 on HOME are OMBAK, DENSITY, SPACE and BREATH. OCT minus and plus move the white keys' octave.
     Buttons: FX the space, held for throws; SEL the page's action, on HOME an angsel; ENV SHAPE; LFO the library; EDIT the gamelan;
     GLO SYSTEM; HOME; SAVE; ARP the gongs by the cycle or by hand; SEQ starts and stops the cycle; PLAY and REC the loop.
-    Black keys 1 to 5 strike the gongs, 6 and 7 are faster and slower, 8 the ending, 9 to 11 bring the kotekan, reyong and ornaments in and out.
+    Black keys 1 to 5 strike the gongs, 6 to 10 bring the kotekan, reyong, ornaments, drums and suling in and out, 11 is the ending.
     The white keys play your gendèr and lead the core melody.</desc>
   <rect class="p-body" x="2" y="2" width="996" height="504" rx="34"/>
 
@@ -94,7 +94,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
     <circle class="p-ctl" cx="95" cy="176" r="20"/><text class="t-name" x="95" y="147" text-anchor="middle">PRESETS</text>
     <text class="t-does" x="95" y="212" text-anchor="middle">gamelan ‹ ›</text><text class="t-small" x="95" y="225" text-anchor="middle">at the gong</text>
     <circle class="p-ctl" cx="215" cy="176" r="20"/><text class="t-name" x="215" y="147" text-anchor="middle">ALGORITHM</text>
-    <text class="t-does" x="215" y="212" text-anchor="middle">tempo, 3–96</text><text class="t-small" x="215" y="225" text-anchor="middle">SHAPE: the page's · holds: extra</text>
+    <text class="t-does" x="215" y="212" text-anchor="middle">tempo, 3–96 (glides)</text><text class="t-small" x="215" y="225" text-anchor="middle">SHAPE: the page's · holds: extra</text>
   </g>
   <g>
     <rect class="p-ctl" x="52" y="244" width="78" height="28" rx="7"/><text class="t-name" x="91" y="263" text-anchor="middle">OCT−</text>
@@ -141,16 +141,17 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
         <thead><tr><th>Hold</th><th>K1</th><th>K2</th><th>K3</th><th>K4</th><th>ALGO</th></tr></thead>
         <tbody>
           <tr><td><b>Gong</b> b1–5</td><td>LEVEL</td><td>TONE</td><td>HUM</td><td>RING</td><td>PLACES</td></tr>
-          <tr><td><b>Faster/slower</b> b6, 7</td><td>STEP</td><td>GLIDE</td><td></td><td></td><td></td></tr>
-          <tr><td><b>Ending</b> b8</td><td>AFTER</td><td>SLOWING</td><td>THINNING</td><td></td><td></td></tr>
-          <tr><td><b>Kotekan</b> b9</td><td>DENSITY</td><td>REGISTER</td><td>TURN</td><td>SPARSE</td><td>level</td></tr>
-          <tr><td><b>Reyong</b> b10</td><td>RATE</td><td>REGISTER</td><td>TURN</td><td>SPARSE</td><td>level</td></tr>
-          <tr><td><b>Ornaments</b> b11</td><td>PICKUP</td><td>OCTAVES</td><td>REGISTER</td><td>SPARSE</td><td>level</td></tr>
+          <tr><td><b>Kotekan</b> b6</td><td>DENSITY</td><td>REGISTER</td><td>TURN</td><td>SPARSE</td><td>level</td></tr>
+          <tr><td><b>Reyong</b> b7</td><td>RATE</td><td>REGISTER</td><td>TURN</td><td>SPARSE</td><td>level</td></tr>
+          <tr><td><b>Ornaments</b> b8</td><td>PICKUP</td><td>OCTAVES</td><td>REGISTER</td><td>SPARSE</td><td>level</td></tr>
+          <tr><td><b>Drums</b> b9</td><td>KENDANG</td><td>CENG-CENG</td><td>BUSY</td><td>SLAP</td><td></td></tr>
+          <tr><td><b>Suling</b> b10</td><td>BREATH</td><td>VIBRATO</td><td>REGISTER</td><td>GLIDE</td><td>level</td></tr>
+          <tr><td><b>Ending</b> b11</td><td>AFTER</td><td>SLOWING</td><td>THINNING</td><td>GLIDE</td><td></td></tr>
           <tr><td><b>White key</b></td><td>SHIMMER</td><td>OMBAK</td><td>PLACE</td><td>SWELL</td><td></td></tr>
           <tr><td><b>FX</b> (throws)</td><td>SHIMMER</td><td>FREEZE</td><td>DIP ±</td><td>HUSH</td><td>OMBAK</td></tr>
         </tbody>
       </table>
-      <p class="note">Gongs, cues and parts keep what you set; a part held to shape it does not switch. Bends and throws
+      <p class="note">Gongs, parts and the ending keep what you set; a part held to shape it does not switch. Bends and throws
         drift back when you let go; <b>SAVE while holding FX</b> keeps the throws. A gong key strikes as you press it.</p>
     </section>
     <section>
@@ -179,10 +180,10 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
       <ul class="tight">
         <li><b>SEQ</b> starts the cycle with the gong; again, it stops and rings out.</li>
         <li><b>White keys</b> lead: the core lands on the note at the next beat, the parts turn toward it.</li>
-        <li><b>Black 6 / 7</b> faster / slower (held: keeps going) · <b>8</b> the ending, closing on the gong.</li>
+        <li><b>ALGO</b> on HOME: the tempo, the ensemble gliding to it · <b>black 11</b>: the ending, closing on the gong.</li>
         <li><b>SEL on HOME</b>: an <b>angsel</b>, the next beat breaks into accented strokes.</li>
         <li><b>ARP</b>: the gongs by the cycle or by your hand (black 1–5).</li>
-        <li><b>Black 9–11</b>: kotekan, reyong, ornaments in or out.</li>
+        <li><b>Black 6–10</b>: kotekan, reyong, ornaments, drums, suling in or out.</li>
       </ul>
     </section>
     <section>
@@ -199,7 +200,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
       <h2>Slow and still</h2>
       <ul class="tight">
         <li><b>STILL</b>: a note every ten seconds, the suling's long breath.</li>
-        <li><b>Hold SLOWER</b>: down to a note every 20 s.</li>
+        <li><b>ALGO down</b>: as far as a note every 20 s.</li>
         <li><b>FX held</b>: FREEZE the space, HUSH the ensemble away.</li>
         <li><b>SLEEP</b> (SYSTEM): the ending on its own, after 20–90 min.</li>
       </ul>
@@ -222,7 +223,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
       <ul class="tight">
         <li><b>GENDER WAYANG</b> · <b>SEMAR PEGULINGAN</b> · <b>ANGKLUNG</b></li>
         <li><b>STILL</b> (Ombak's own) · <b>GONG GEDE</b> · <b>GILAK</b></li>
-        <li><b>LADRANG</b> (Java) · <b>GONG KEBYAR</b></li>
+        <li><b>LADRANG</b> (Java) · <b>GONG KEBYAR</b> · <b>SELONDING</b> (iron)</li>
         <li>Forms: FREE, gilak, lancaran, ketawang, ladrang · kotekan: circling, norot, nyog cag, empat</li>
       </ul>
     </section>
@@ -231,7 +232,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
       <ul class="tight">
         <li>It saves itself once the sound rests; <b>SAVE</b> saves now.</li>
         <li>MIDI (channel 1): notes from middle C, black keys the gongs, CC 20–25, clock both ways.</li>
-        <li>Ten measured tunings; the names and sources are in the manual.</li>
+        <li>Eleven measured tunings; the names and sources are in the manual.</li>
       </ul>
     </section>
   </div>
@@ -272,7 +273,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
   for (let i = 0; i < 16; i++)
     el(keys, "rect", { class: "p-key", x: x0 + 12 + i * pitch + (pitch - kw) / 2, y: y0 + 68, width: kw, height: 60, rx: kw / 2 });
   const AFTER = [0, 1, 2, 4, 5, 7, 8, 9, 11, 12, 14];
-  const NAMES = ["GONG", "LANANG", "KEMPUR", "KEMONG", "KAJAR", "FASTER", "SLOWER", "ENDING", "KOTE KAN", "REY ONG", "ORNA MENTS"];
+  const NAMES = ["GONG", "LANANG", "KEMPUR", "KEMONG", "KAJAR", "KOTE KAN", "REY ONG", "ORNA MENTS", "DRUMS", "SULING", "ENDING"];
   AFTER.forEach((a, k) => {
     const cx = x0 + 12 + (a + 1) * pitch;
     el(keys, "rect", { class: "p-keyb", x: cx - kw / 2, y: y0 + 12, width: kw, height: 54, rx: kw / 2 });
@@ -286,8 +287,8 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); 
     el(keys, "text", { class: "t-does", x: (xa + xb) / 2, y: y0 - 13, "text-anchor": "middle" }, label);
   };
   span(0, 4, "the gongs: strike · held: shape");
-  span(5, 7, "faster · slower · the ending");
-  span(8, 10, "the parts: in / out · held: shape");
+  span(5, 9, "the parts: in / out · held: shape");
+  span(10, 10, "the ending");
 })();
 </script>
 </body>

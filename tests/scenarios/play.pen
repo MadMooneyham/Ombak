@@ -77,9 +77,9 @@ shot hold_fx.png
 release FX
 wait 3000
 # the ending
-key b7 down
+key b10 down
 wait 100
-key b7 up
+key b10 up
 wait 75000
 expect playing 0
 wavstop
