@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Ombak's site on GitHub Pages: the landing page, the web installer and the screen reader's words (Penumbra's
-# workflow, without the emulator). Runs on each published release (and by hand): it takes the latest release's
-# own .fwsc, so nothing is rebuilt for the installer.
+# Ombak's site on GitHub Pages: the landing page, the web installer, the emulator, the cheat sheet and the screen
+# reader's words (Penumbra's workflow). Runs on each published release (and by hand): it takes the latest release's
+# own .fwsc, so nothing is rebuilt for the installer; the emulator is built here from this checkout with Emscripten.
 # Needs Settings > Pages > Source: GitHub Actions, once.
 # A release runs on its tag, and github-pages deploys only from main: so a release only starts this workflow
 # again on main (hand-over), and that run builds and deploys.
@@ -40,6 +40,10 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - run: pip install Pillow
+      - uses: mymindstorm/setup-emsdk@v16
+        with:
+          version: 6.0.13
       - name: The latest release's package
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,6 +54,8 @@ jobs:
           test -n "$tag" || { echo "no published release"; exit 1; }
           gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*.fwsc' --dir build/release
           echo "VERSION=${tag#v}" >> "$GITHUB_ENV"
+      - name: The emulator
+        run: OMB_VERSION="$VERSION" sh web/emu/build.sh
       - name: The site
         run: python3 tools/make_pages.py "build/release/ombak-$VERSION.fwsc" "$VERSION" build/pages
       - uses: actions/upload-pages-artifact@v5

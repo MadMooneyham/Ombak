@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ombak Cheat Sheet</title>
+<meta name="description" content="Ombak 1.1 for the M-VAVE FM-1 on one page: every control, the holds, the pages and the gamelan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=Noto+Sans+Balinese&display=swap">
+<style>
+/* paper first: it is made to be printed (one landscape page, A4 or Letter); a night version on screen when asked.
+ * Penumbra's sheet, in Ombak's bronze */
+:root { --paper: #fbf8f2; --ink: #1d160f; --muted: #6b5e50; --rule: #d8cfc2; --accent: #94621b; --face: #fff; --fill: #f1ece3;
+        --key: #fff; --keyb: #3a2e22; --keyb-ink: #fff; color-scheme: light; }
+@media screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper: #0e0b09; --ink: #f0e7d8; --muted: #a8998a; --rule: #34291f; --accent: #d6a54e; --face: #18130e;
+        --fill: #1c1610; --key: #ece4d6; --keyb: #4a3c2e; --keyb-ink: #fff; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --paper: #0e0b09; --ink: #f0e7d8; --muted: #a8998a; --rule: #34291f; --accent: #d6a54e; --face: #18130e;
+        --fill: #1c1610; --key: #ece4d6; --keyb: #4a3c2e; --keyb-ink: #fff; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 13px/1.38 "Barlow", "Helvetica Neue", Arial, sans-serif; }
+.sheet { max-width: 1120px; margin: 0 auto; padding: 22px 16px 28px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem 1rem; border-bottom: 2px solid var(--ink); padding-bottom: .35rem; }
+h1 { font: 700 26px/1 "Barlow Semi Condensed", sans-serif; letter-spacing: .14em; margin: 0; }
+header .sub { color: var(--muted); font-size: 14px; }
+header .links { margin-left: auto; display: flex; flex-wrap: wrap; gap: 1rem; font-size: 13px; }
+a { color: var(--accent); }
+h2 { font: 700 12px/1.2 "Barlow Semi Condensed", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--accent);
+     margin: 0 0 .3rem; }
+svg.panel { display: block; width: 100%; height: auto; margin: 10px 0 6px; }
+svg text { font-family: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif; }
+.p-body { fill: var(--fill); stroke: var(--rule); stroke-width: 1.5; }
+.p-tray { fill: none; stroke: var(--rule); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.p-ctl { fill: var(--face); stroke: var(--ink); stroke-width: 1.4; }
+.p-key { fill: var(--key); stroke: var(--ink); stroke-width: 1.2; }
+.p-keyb { fill: var(--keyb); stroke: var(--keyb); }
+.p-screen { fill: #0e0b09; stroke: var(--ink); stroke-width: 1.4; }
+.t-name { fill: var(--ink); font-weight: 700; font-size: 13px; letter-spacing: .05em; }
+.t-does { fill: var(--accent); font-weight: 600; font-size: 11.5px; }
+.t-small { fill: var(--muted); font-weight: 500; font-size: 10.5px; }
+.t-keyb { fill: var(--keyb-ink); font-weight: 700; font-size: 10px; }
+.t-scr { fill: #f0e7d8; font-weight: 600; font-size: 11px; letter-spacing: .06em; }
+.t-scr2 { fill: #d6a54e; font-weight: 600; font-size: 10px; }
+.cols { display: grid; grid-template-columns: 1.55fr 1fr 1fr; gap: 14px 22px; }
+@media screen and (max-width: 860px) { .cols { grid-template-columns: 1fr; } .panelbox { overflow-x: auto; } svg.panel { min-width: 760px; } }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { text-align: left; padding: 2px 6px 2px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 600 11px "Barlow Semi Condensed", sans-serif; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+td b { font-weight: 600; }
+section { break-inside: avoid; }
+section + section { margin-top: 10px; }
+.note { color: var(--muted); font-size: 12px; margin: .3rem 0 0; }
+ul.tight { margin: 0; padding-left: 1rem; }
+ul.tight li { margin: 0 0 1px; }
+footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 11.5px; display: flex; flex-wrap: wrap; gap: .2rem 1.2rem; }
+@media print {
+  @page { size: landscape; margin: 8mm; }
+  body { font-size: 11px; background: #fff; }
+  .sheet { max-width: none; padding: 0; zoom: .8; }        /* one landscape page, A4 or Letter */
+  header .links { display: none; }
+  table { font-size: 10.6px; }
+  .note, footer { font-size: 10px; }
+  svg.panel { width: 70%; max-width: 620px; margin: 4px auto 2px; }
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+<header>
+  <h1>OMBAK</h1>
+  <span class="sub">1.1 · a gamelan-inspired instrument for the M-VAVE FM-1 · cheat sheet</span>
+  <nav class="links" aria-label="Ombak pages"><a href="../emu/">Play it in the browser</a><a href="../install/">Install</a><a href="https://github.com/MadMooneyham/Ombak/blob/main/MANUAL.md">Manual</a><a href="ombak-cheatsheet.pdf">PDF</a></nav>
+</header>
+
+<div class="panelbox">
+<svg class="panel" viewBox="0 0 1000 508" role="img" aria-labelledby="panel-t panel-d">
+  <title id="panel-t">The FM-1's panel, labelled for Ombak</title>
+  <desc id="panel-d">MASTER is volume. SELECT walks the modes on HOME. PRESETS walks the gamelan. ALGORITHM sets the tempo.
+    Knobs 1 to 4 on HOME are OMBAK, DENSITY, SPACE and BREATH. OCT minus and plus move the white keys' octave.
+    Buttons: FX the space, held for throws; SEL the page's action, on HOME an angsel; ENV SHAPE; LFO the library; EDIT the gamelan;
+    GLO SYSTEM; HOME; SAVE; ARP the gongs by the cycle or by hand; SEQ starts and stops the cycle; PLAY and REC the loop.
+    Black keys 1 to 5 strike the gongs, 6 and 7 are faster and slower, 8 the ending, 9 to 11 bring the kotekan, reyong and ornaments in and out.
+    The white keys play your gendèr and lead the core melody.</desc>
+  <rect class="p-body" x="2" y="2" width="996" height="504" rx="34"/>
+
+  <!-- the left knobs -->
+  <g>
+    <circle class="p-ctl" cx="95" cy="70" r="20"/><text class="t-name" x="95" y="40" text-anchor="middle">MASTER</text>
+    <text class="t-does" x="95" y="106" text-anchor="middle">volume</text>
+    <circle class="p-ctl" cx="215" cy="70" r="20"/><text class="t-name" x="215" y="40" text-anchor="middle">SELECT</text>
+    <text class="t-does" x="215" y="106" text-anchor="middle">HOME: the mode</text><text class="t-small" x="215" y="119" text-anchor="middle">at the gong · pages: the row</text>
+    <circle class="p-ctl" cx="95" cy="176" r="20"/><text class="t-name" x="95" y="147" text-anchor="middle">PRESETS</text>
+    <text class="t-does" x="95" y="212" text-anchor="middle">gamelan ‹ ›</text><text class="t-small" x="95" y="225" text-anchor="middle">at the gong</text>
+    <circle class="p-ctl" cx="215" cy="176" r="20"/><text class="t-name" x="215" y="147" text-anchor="middle">ALGORITHM</text>
+    <text class="t-does" x="215" y="212" text-anchor="middle">tempo, 3–96</text><text class="t-small" x="215" y="225" text-anchor="middle">SHAPE: the page's · holds: extra</text>
+  </g>
+  <g>
+    <rect class="p-ctl" x="52" y="244" width="78" height="28" rx="7"/><text class="t-name" x="91" y="263" text-anchor="middle">OCT−</text>
+    <rect class="p-ctl" x="156" y="244" width="78" height="28" rx="7"/><text class="t-name" x="195" y="263" text-anchor="middle">OCT+</text>
+    <text class="t-does" x="143" y="290" text-anchor="middle">white keys' octave, ±1</text>
+    <text class="t-small" x="143" y="303" text-anchor="middle">both 5 s: update mode</text>
+  </g>
+
+  <!-- the screen: HOME, the Ongkara and the cycle round its rim -->
+  <rect class="p-screen" x="300" y="26" width="236" height="236" rx="18"/>
+  <text class="t-scr" x="418" y="56" text-anchor="middle">HOME</text>
+  <circle cx="418" cy="122" r="40" fill="none" stroke="#d6a54e" stroke-width="1" opacity=".5"/>
+  <circle cx="418" cy="122" r="32" fill="#1a130c" stroke="#7a5a33" stroke-width="1.2"/>
+  <text x="418" y="134" text-anchor="middle" fill="#f3c87a" font-size="30" font-family="'Noto Sans Balinese', serif">ᬒᬁ</text>
+  <g fill="#d6a54e"><circle cx="418" cy="82" r="3.4"/><circle cx="458" cy="122" r="2.6"/><circle cx="418" cy="162" r="2.8"/><circle cx="378" cy="122" r="2.6"/></g>
+  <g fill="#8a7c6c"><circle cx="446" cy="94" r="1.4"/><circle cx="446" cy="150" r="1.4"/><circle cx="390" cy="150" r="1.4"/><circle cx="390" cy="94" r="1.4"/></g>
+  <circle cx="452" cy="104" r="3.6" fill="#fff0cd"/>
+  <text class="t-scr2" x="418" y="186" text-anchor="middle">the cycle round the rim, a light travelling</text>
+  <text class="t-scr" x="418" y="206" text-anchor="middle">MODE, GAMELAN</text>
+  <text class="t-scr2" x="418" y="236" text-anchor="middle">OMBAK  DENSITY  SPACE  BREATH</text>
+  <text class="t-small" x="418" y="282" text-anchor="middle">any page goes back to HOME after 30 s</text>
+
+  <!-- the four knobs -->
+  <g>
+    <text class="t-small" x="767" y="22" text-anchor="middle">on HOME · in a hold, what the hold plays</text>
+    <circle class="p-ctl" cx="610" cy="70" r="19"/><text class="t-name" x="610" y="44" text-anchor="middle">KNOB 1</text><text class="t-does" x="610" y="106" text-anchor="middle">OMBAK</text>
+    <circle class="p-ctl" cx="714" cy="70" r="19"/><text class="t-name" x="714" y="44" text-anchor="middle">KNOB 2</text><text class="t-does" x="714" y="106" text-anchor="middle">DENSITY</text>
+    <circle class="p-ctl" cx="818" cy="70" r="19"/><text class="t-name" x="818" y="44" text-anchor="middle">KNOB 3</text><text class="t-does" x="818" y="106" text-anchor="middle">SPACE</text>
+    <circle class="p-ctl" cx="922" cy="70" r="19"/><text class="t-name" x="922" y="44" text-anchor="middle">KNOB 4</text><text class="t-does" x="922" y="106" text-anchor="middle">BREATH</text>
+  </g>
+
+  <g id="btns"></g>
+  <g id="keys"></g>
+  <text class="t-small" x="40" y="497">Hold any button a moment: it says what it does.</text>
+  <text class="t-does" x="960" y="497" text-anchor="end">white keys: your gendèr, and the next core note · held: bends</text>
+</svg>
+</div>
+
+<div class="cols">
+  <div>
+    <section>
+      <h2>The holds: hold one, the knobs play it</h2>
+      <table>
+        <thead><tr><th>Hold</th><th>K1</th><th>K2</th><th>K3</th><th>K4</th><th>ALGO</th></tr></thead>
+        <tbody>
+          <tr><td><b>Gong</b> b1–5</td><td>LEVEL</td><td>TONE</td><td>HUM</td><td>RING</td><td>PLACES</td></tr>
+          <tr><td><b>Faster/slower</b> b6, 7</td><td>STEP</td><td>GLIDE</td><td></td><td></td><td></td></tr>
+          <tr><td><b>Ending</b> b8</td><td>AFTER</td><td>SLOWING</td><td>THINNING</td><td></td><td></td></tr>
+          <tr><td><b>Kotekan</b> b9</td><td>DENSITY</td><td>REGISTER</td><td>TURN</td><td>SPARSE</td><td>level</td></tr>
+          <tr><td><b>Reyong</b> b10</td><td>RATE</td><td>REGISTER</td><td>TURN</td><td>SPARSE</td><td>level</td></tr>
+          <tr><td><b>Ornaments</b> b11</td><td>PICKUP</td><td>OCTAVES</td><td>REGISTER</td><td>SPARSE</td><td>level</td></tr>
+          <tr><td><b>White key</b></td><td>SHIMMER</td><td>OMBAK</td><td>PLACE</td><td>SWELL</td><td></td></tr>
+          <tr><td><b>FX</b> (throws)</td><td>SHIMMER</td><td>FREEZE</td><td>DIP ±</td><td>HUSH</td><td>OMBAK</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Gongs, cues and parts keep what you set; a part held to shape it does not switch. Bends and throws
+        drift back when you let go; <b>SAVE while holding FX</b> keeps the throws. A gong key strikes as you press it.</p>
+    </section>
+    <section>
+      <h2>SHAPE (ENV): four knobs a page</h2>
+      <table>
+        <thead><tr><th>Page</th><th>K1</th><th>K2</th><th>K3</th><th>K4</th><th>ALGO</th></tr></thead>
+        <tbody>
+          <tr><td><b>ENSEMBLE</b></td><td>CORE</td><td>KOTEKAN</td><td>REYONG</td><td>GONGS</td><td>GENDÈR</td></tr>
+          <tr><td><b>GENDÈR</b></td><td>BRIGHT</td><td>RING</td><td>BLOOM</td><td>DAMP</td><td>level</td></tr>
+          <tr><td><b>BARS</b></td><td>BRIGHT</td><td>RING</td><td>MALLET</td><td>BLOOM</td><td>core</td></tr>
+          <tr><td><b>REYONG</b></td><td>BRIGHT</td><td>RING</td><td>MALLET</td><td></td><td>level</td></tr>
+          <tr><td><b>GONGS</b></td><td>HUM</td><td>SWELL</td><td>BODY</td><td>OMBAK</td><td>level</td></tr>
+          <tr><td><b>DRUMS</b></td><td>KENDANG</td><td>CENG-CENG</td><td>BUSY</td><td>SLAP</td><td></td></tr>
+          <tr><td><b>SULING</b></td><td>BREATH</td><td>VIBRATO</td><td>REGISTER</td><td>GLIDE</td><td>level</td></tr>
+          <tr><td><b>TIDES</b></td><td>RATE</td><td>SPACE</td><td>SWELL</td><td>OMBAK</td><td>SHAPE</td></tr>
+          <tr><td><b>PAN</b></td><td>GENDÈR</td><td>CORE</td><td>KOTEKAN</td><td>GONGS</td><td>RATE</td></tr>
+          <tr><td><b>PAN 2</b></td><td colspan="4">the same four's sway</td><td>OFFSET</td></tr>
+        </tbody>
+      </table>
+      <p class="note">ENV again or SELECT: the next page. <b>SEL</b> on SHAPE: A/B (two shapes, this session's).</p>
+    </section>
+  </div>
+  <div>
+    <section>
+      <h2>Playing</h2>
+      <ul class="tight">
+        <li><b>SEQ</b> starts the cycle with the gong; again, it stops and rings out.</li>
+        <li><b>White keys</b> lead: the core lands on the note at the next beat, the parts turn toward it.</li>
+        <li><b>Black 6 / 7</b> faster / slower (held: keeps going) · <b>8</b> the ending, closing on the gong.</li>
+        <li><b>SEL on HOME</b>: an <b>angsel</b>, the next beat breaks into accented strokes.</li>
+        <li><b>ARP</b>: the gongs by the cycle or by your hand (black 1–5).</li>
+        <li><b>Black 9–11</b>: kotekan, reyong, ornaments in or out.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>The loop: the core, for you</h2>
+      <table>
+        <tbody>
+          <tr><td><b>REC</b></td><td>record the core from the next cycle · again: cancel</td></tr>
+          <tr><td><b>PLAY</b></td><td>hold the loop (you lead) · again: back</td></tr>
+          <tr><td><b>PLAY</b> held, or <b>REC + PLAY</b></td><td>clear it</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Slow and still</h2>
+      <ul class="tight">
+        <li><b>STILL</b>: a note every ten seconds, the suling's long breath.</li>
+        <li><b>Hold SLOWER</b>: down to a note every 20 s.</li>
+        <li><b>FX held</b>: FREEZE the space, HUSH the ensemble away.</li>
+        <li><b>SLEEP</b> (SYSTEM): the ending on its own, after 20–90 min.</li>
+      </ul>
+    </section>
+  </div>
+  <div>
+    <section>
+      <h2>Pages</h2>
+      <table>
+        <tbody>
+          <tr><td><b>FX</b></td><td>SPACE: DECAY SIZE SHIMMER TONE · SPACE 2: MOTION INTERVAL LOW&nbsp;CUT LEVEL</td></tr>
+          <tr><td><b>EDIT</b></td><td>GAMELAN: tuning, mode, form, cycle, the gongs, core and kotekan instruments, kotekan style, parts in / out</td></tr>
+          <tr><td><b>LFO</b></td><td>LIBRARY: SEL opens · MINE 1–4: SAVE keeps the work there</td></tr>
+          <tr><td><b>GLO</b></td><td>SYSTEM: HOME, SLEEP, MIDI, output, RESET SOUND · again: BENCH</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>The gamelan (PRESETS)</h2>
+      <ul class="tight">
+        <li><b>GENDER WAYANG</b> · <b>SEMAR PEGULINGAN</b> · <b>ANGKLUNG</b></li>
+        <li><b>STILL</b> (Ombak's own) · <b>GONG GEDE</b> · <b>GILAK</b></li>
+        <li><b>LADRANG</b> (Java) · <b>GONG KEBYAR</b></li>
+        <li>Forms: FREE, gilak, lancaran, ketawang, ladrang · kotekan: circling, norot, nyog cag, empat</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Good to know</h2>
+      <ul class="tight">
+        <li>It saves itself once the sound rests; <b>SAVE</b> saves now.</li>
+        <li>MIDI (channel 1): notes from middle C, black keys the gongs, CC 20–25, clock both ways.</li>
+        <li>Ten measured tunings; the names and sources are in the manual.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+<footer>
+  <span>Ombak by Lunar Eclipse Forge · GPL-3.0 · github.com/MadMooneyham/Ombak · inspired by gamelan, with gratitude to the musicians of Bali and Java</span>
+  <span>Built on Penumbra, X0X (Charles Vestal) and Felucca (Hügelton Instruments). M-VAVE and FM-1 are trademarks of their owners.</span>
+</footer>
+</div>
+
+<script>
+// the buttons and keys, drawn from two lists (the same places as Penumbra's sheet and the emulator's panel)
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  function el(parent, tag, attrs, text) {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text !== undefined) e.textContent = text;
+    parent.appendChild(e);
+    return e;
+  }
+  const ROW1 = [["FX", "space", "held: throws"], ["SEL", "action", "HOME: angsel"], ["ENV", "SHAPE", "SEL: A/B"],
+                ["LFO", "LIBRARY", "SAVE: MINE"], ["EDIT", "GAMELAN", ""], ["GLO", "SYSTEM", "again: BENCH"]];
+  const ROW2 = [["HOME", "HOME", ""], ["SAVE", "save", "FX held: keep"], ["ARP", "gongs", "cycle / hand"],
+                ["SEQ", "cycle", "start / stop"], ["PLAY", "loop", "hold / back"], ["REC", "loop", "record"]];
+  const btns = document.getElementById("btns");
+  el(btns, "rect", { class: "p-tray", x: 568, y: 126, width: 412, height: 186, rx: 14 });
+  [ROW1, ROW2].forEach((row, r) => row.forEach(([name, does, more], i) => {
+    const x = 578 + i * 67, y = 136 + r * 88;
+    el(btns, "rect", { class: "p-ctl", x, y, width: 58, height: 38, rx: 8 });
+    el(btns, "text", { class: "t-name", x: x + 29, y: y + 24, "text-anchor": "middle" }, name);
+    el(btns, "text", { class: "t-does", x: x + 29, y: y + 54, "text-anchor": "middle" }, does);
+    if (more) el(btns, "text", { class: "t-small", x: x + 29, y: y + 67, "text-anchor": "middle" }, more);
+  }));
+  const keys = document.getElementById("keys");
+  const x0 = 36, y0 = 340, w = 928, h = 138, pitch = (w - 24) / 16, kw = pitch * 0.8;
+  el(keys, "rect", { class: "p-tray", x: x0, y: y0, width: w, height: h, rx: 14 });
+  for (let i = 0; i < 16; i++)
+    el(keys, "rect", { class: "p-key", x: x0 + 12 + i * pitch + (pitch - kw) / 2, y: y0 + 68, width: kw, height: 60, rx: kw / 2 });
+  const AFTER = [0, 1, 2, 4, 5, 7, 8, 9, 11, 12, 14];
+  const NAMES = ["GONG", "LANANG", "KEMPUR", "KEMONG", "KAJAR", "FASTER", "SLOWER", "ENDING", "KOTE KAN", "REY ONG", "ORNA MENTS"];
+  AFTER.forEach((a, k) => {
+    const cx = x0 + 12 + (a + 1) * pitch;
+    el(keys, "rect", { class: "p-keyb", x: cx - kw / 2, y: y0 + 12, width: kw, height: 54, rx: kw / 2 });
+    const t = NAMES[k].split(" ");
+    el(keys, "text", { class: "t-keyb", x: cx, y: y0 + (t.length > 1 ? 36 : 43), "text-anchor": "middle" }, t[0]);
+    if (t[1]) el(keys, "text", { class: "t-keyb", x: cx, y: y0 + 50, "text-anchor": "middle" }, t[1]);
+  });
+  const span = (a, b, label) => {
+    const xa = x0 + 12 + (AFTER[a] + 1) * pitch - kw / 2, xb = x0 + 12 + (AFTER[b] + 1) * pitch + kw / 2;
+    el(keys, "path", { d: `M${xa} ${y0 - 4} v-5 H${xb} v5`, fill: "none", stroke: "currentColor", class: "t-small", "stroke-width": 1 });
+    el(keys, "text", { class: "t-does", x: (xa + xb) / 2, y: y0 - 13, "text-anchor": "middle" }, label);
+  };
+  span(0, 4, "the gongs: strike · held: shape");
+  span(5, 7, "faster · slower · the ending");
+  span(8, 10, "the parts: in / out · held: shape");
+})();
+</script>
+</body>
+</html>

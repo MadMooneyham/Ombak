@@ -36,14 +36,14 @@ On Linux x86-64 the toolchain runs natively. On macOS the build runs each tool i
 
 `JIELI_TOOLCHAIN` and `AC79_SDK` override the default locations (`~/.jieli/toolchain`, `~/fw-AC79_AIoT_SDK`).
 
-`./build.sh --release 1.0` makes a release build: the package is `build/ombak-1.0.fwsc`, identity
-`FM-1_74010000` (74 is Ombak's; Penumbra's is 73), its version `1.0` (a 0.x would say BETA).
+`./build.sh --release 1.1` makes a release build: the package is `build/ombak-1.1.fwsc`, identity
+`FM-1_74010100` (74 is Ombak's; Penumbra's is 73), its version `1.1` (a 0.x would say BETA).
 
-**A release:** build it, then publish a GitHub release tagged `v1.0` with `build/ombak-1.0.fwsc` attached
-and `RELEASE-1.0.md` as its notes. Publishing runs `.github/workflows/pages.yml`, which builds the site
+**A release:** build it, then publish a GitHub release tagged `v1.1` with `build/ombak-1.1.fwsc` attached
+and `RELEASE-1.1.md` as its notes. Publishing runs `.github/workflows/pages.yml`, which builds the site
 (`tools/make_pages.py`: the landing page, the web installer, the reader's words) from that release's own package
 and deploys it to GitHub Pages (Settings > Pages > Source: GitHub Actions, once). Locally:
-`python3 tools/make_pages.py build/ombak-1.0.fwsc 1.0 build/pages`, then `python3 -m http.server` there.
+`python3 tools/make_pages.py build/ombak-1.1.fwsc 1.1 build/pages`, then `python3 -m http.server` there.
 
 The build also generates `build/gen/`: the font, the logo (`tools/gen_logo.py`, from `assets/logo.jpg`), the
 Ongkara (`tools/gen_ongkara.py`, from `assets/ongkara.png`), the effects' tables and the screen reader's words link.
@@ -66,7 +66,7 @@ works is measured on the FM-1 itself, on its BENCH page (GLO, then GLO again; SE
 From the command line (needs `pip3 install mido python-rtmidi`):
 
 ```
-python3 tools/fm1_install.py build/ombak-1.0.fwsc
+python3 tools/fm1_install.py build/ombak-1.1.fwsc
 python3 tools/fm1_install.py --info          # identity of the connected FM-1
 ```
 

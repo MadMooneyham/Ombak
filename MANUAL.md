@@ -1,6 +1,6 @@
 # Ombak manual
 
-Ombak 1.0 for the M-VAVE FM-1, by Lunar Eclipse Forge.
+Ombak 1.1 for the M-VAVE FM-1, by Lunar Eclipse Forge.
 
 Ombak is an instrument inspired by the gamelan of Bali and Java. It is not a gamelan, and it does not
 pretend to be one. It plays measured tunings from real ensembles, and it builds its parts the way a gamelan
@@ -11,6 +11,8 @@ does. You lead the melody, and the ensemble answers.
 - **The elaboration** fills each beat: the interlocking kotekan, the reyong and the gendèr's ornaments. Each
   one leaves the core note and turns toward the next one, landing on it as it arrives.
 - **The gongs** mark the cycle: the gong at its start, and the smaller gongs and the kajar inside it.
+- **The drums and the flute:** the kendang drive the ensemble and the ceng-ceng cymbals with them; the suling,
+  a bamboo flute, holds the melody in one long breath.
 - **The ombak** is what gives Ombak its name. *Ombak* means "wave": the shimmer of two instruments tuned a
   little apart, beating against each other.
 
@@ -82,7 +84,8 @@ length, and the loop. On the right, it shows the octave, or SLEEP with the minut
 | K4 BREATH | From a steady pulse, to beats that swell and slow into each gong |
 
 On HOME, **SELECT** walks the tuning's modes, and **PRESETS** walks the gamelan. Either change arrives with
-the next gong, as a real ensemble would change. Stopped, it changes at once.
+the next gong, as a real ensemble would change. Stopped, it changes at once. **SEL** on HOME calls an angsel
+(section 4).
 
 ## 3. The keys
 
@@ -118,6 +121,11 @@ By hand, black 1-5 are yours alone, and the beat runs on either way.
   jumping. Hold one, and the tempo keeps moving, a step every two seconds.
 - **The ENDING** (black 8) slows each beat, thins the elaboration, and closes on the gong: the next gong at
   least four beats away, or, if you set it, the one after. Then the cycle stops and everything rings out.
+
+**Angsel.** On HOME, **SEL** calls an *angsel*, the sudden break of Balinese music: the next beat, the whole
+ensemble strikes together, accented, on the beat and again late in it, the kendang and ceng-ceng with it, and
+leaves the rest of that beat silent. Then the music goes on as before. Use it to punctuate a phrase, or several
+in a row for a passage of breaks.
 
 ## 5. The holds
 
@@ -173,9 +181,12 @@ The loop is saved with everything else.
 | SEMAR PEGULINGAN | The seven-tone court gamelan (saih pitu, Tampak Gangsul): gangsa kotekan, gendèr ornaments (as made, at power-on) |
 | ANGKLUNG | The four-tone slendro (Mas), with reyong and a norot kotekan |
 | STILL | Ombak's own, for meditation, not a tradition: the gendèr and the gongs, a core note every ten seconds, long rings, no kajar, a deep space |
-| GONG GEDE | Five-tone pelog (Peliatan), 32 beats, slow and breathing |
-| GILAK | The eight-beat Balinese form that opens an event, in gong tuning, with nyog cag kotekan, 60 a minute |
+| GONG GEDE | Five-tone pelog (Peliatan), 32 beats, slow and breathing, with kendang and ceng-ceng |
+| GILAK | The eight-beat Balinese form that opens an event, in gong tuning, with nyog cag kotekan, kendang and ceng-ceng, 60 a minute |
 | LADRANG | The 32-beat Javanese form on Kanyut Mesem pelog (pathet nem): the core and the gendèr's ornaments, no kotekan, 30 a minute |
+| GONG KEBYAR | The brilliant twentieth-century Balinese style, in Peliatan's five-tone pelog: everything in, norot gangsa, a fast ombak, 75 a minute. Try SEL on HOME for its angsel |
+
+SEMAR PEGULINGAN also has the kendang, the ceng-ceng and the suling; STILL has the suling.
 
 **GAMELAN (EDIT)** shows the gamelan playing as a list. SELECT picks the row, and ALGO, a knob or SEL changes
 it.
@@ -191,6 +202,17 @@ it.
 | KOTEKAN ON | Gangsa, or gendèr |
 | KOTEKAN | The style: CIRCLING, NOROT, NYOG CAG or EMPAT |
 | REYONG, ORNAMENTS | In or out (black 10 and 11 too) |
+| KENDANG, CENG-CENG, SULING | In or out |
+
+**The drums.** The kendang are two drums, the low *wadon* and the high *lanang*, interlocking as the kotekan's
+two parts do: the wadon's open *dag* on the strong places, the lanang's *tut* between and its slapped *pak*
+answering, in two figures that take turns beat by beat. The ceng-ceng, small cymbals, divide the beat into four.
+Both thin out as the beat slows (two strokes a beat, then one), so they never chatter over a slow piece. They sit
+with the elaboration, so HUSH lets them fall away too.
+
+**The suling** is a bamboo flute playing one long tone on the core note, gliding to each new one, with a
+vibrato that grows in after it arrives and the hiss of the breath. Balinese suling players breathe in a circle,
+so the tone never has to break. It swells in as the cycle starts and fades as it stops.
 
 **The tunings** are measured sets from real instruments, as the Scala scale archive transcribes them.
 
@@ -249,6 +271,13 @@ levels and amounts as %, and timbre as -/+% from AS MADE.
 | PAN | GENDER | CORE | KOTEKAN (all the elaboration) | GONGS | RATE (0: the tide's) |
 | PAN 2 | (the same four's sway) | | | | OFFSET |
 
+Two more pages sit after GONGS:
+
+| Page | K1 | K2 | K3 | K4 | ALGO |
+| --- | --- | --- | --- | --- | --- |
+| DRUMS | KENDANG (level) | CENG-CENG (level) | BUSY (fewer or more strokes) | SLAP (how hard the hands slap) | |
+| SULING | BREATH | VIBRATO | REGISTER (an octave down or up) | GLIDE (how slowly it moves to a new note) | Its level |
+
 **The tides** are one slow swell under everything: the space opens, the ensemble grows louder and brighter,
 and the ombak quickens, then all of it settles again. RING reaches four times as made, so a gendèr note can
 ring for over 20 seconds.
@@ -266,7 +295,7 @@ kotekan style stay as they are. A/B lasts only this session.
 | SPACE | DECAY (up to 40 seconds) | SIZE | SHIMMER | TONE |
 | SPACE 2 | MOTION (how much its lines move) | INTERVAL (the shimmer: an octave, a fifth or a twelfth up) | LOW CUT (on what goes in) | LEVEL (its return) |
 
-**The library (LFO)** lists the seven gamelan, then four slots of your own: **MINE 1** to **MINE 4**.
+**The library (LFO)** lists the eight gamelan, then four slots of your own: **MINE 1** to **MINE 4**.
 
 - **SEL** on a gamelan opens it at the next gong (stopped, at once). PRESETS walks the list too.
 - **SAVE** on a MINE slot keeps everything playing there: the gamelan, its shape, its loop.
@@ -283,6 +312,7 @@ kotekan style stay as they are. A/B lasts only this session.
 | FOLLOW CLOCK IN | An incoming MIDI clock leads the tempo (FOLLOWING while it does) |
 | MIDI CLOCK OUT | Sends MIDI clock, Start and Stop while the cycle runs |
 | MIDI NOTES OUT | Sends the keys you play on the FM-1 as notes |
+| MIDI CC OUT | Sends HOME's knobs, the tempo, an angsel and the gamelan as you change them, as CCs and program changes |
 | OUTPUT LEVEL | NORMAL, or LOUD (6 dB hotter) |
 | USB AUDIO | MASTER (follows the volume knob), or FULL level |
 | 2ND CORE | Uses the FM-1's second processor core; applies at the next power-on |
@@ -310,7 +340,8 @@ won't take an install, hold **OCT-** and **OCT+** together for five seconds to p
 
 To play Ombak for meditation:
 
-1. Open **STILL** (PRESETS or the library). It has a core note every ten seconds, long rings and no kajar.
+1. Open **STILL** (PRESETS or the library). It has a core note every ten seconds, long rings, no kajar, and the
+   suling's long breath under it (GAMELAN's SULING row takes it out, the SULING page shapes it).
 2. Play a white key now and then. The core takes it at the next beat, and the space holds it.
 3. **Hold SLOWER** to sink the tempo further, as far as a note every 20 seconds.
 4. Hold **FX** and turn **FREEZE** to let the space hold, or **HUSH** to let the ensemble fall away to the gongs
@@ -333,7 +364,8 @@ channel.
 | Sustain pedal (CC 64) | Lifts the damping hand: every note rings on |
 | CC 20, 21, 22, 23 | OMBAK, DENSITY, SPACE, BREATH (CC 1 is DENSITY too) |
 | CC 24 | The tempo |
-| Program change | The gamelan (0 GENDER WAYANG to 6 LADRANG), at the next gong. Stopped, as the cycle starts |
+| CC 25 | An angsel (a value of 64 or more) |
+| Program change | The gamelan (0 GENDER WAYANG to 7 GONG KEBYAR), at the next gong. Stopped, as the cycle starts |
 | Start, Stop | The cycle |
 | CC 120, CC 123 | Everything you are playing is damped |
 
@@ -370,6 +402,7 @@ F#, G# and A# above it. The cycle's own notes are not sent.
 | PLAY | Hold the loop / bring it back; held: clear |
 | REC + PLAY | Clear the loop |
 | FX | The space (again: the next row); held: the throws (SHIMMER, FREEZE, DIP, HUSH; ALGO: OMBAK) |
+| SEL (HOME) | Angsel: the next beat breaks |
 | ENV | SHAPE (again: the next page); SEL there: A/B |
 | EDIT | GAMELAN: tuning, mode, form, cycle, parts, kotekan style |
 | LFO | The library (SEL: open; SAVE on MINE: keep) |

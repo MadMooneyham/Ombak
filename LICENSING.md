@@ -15,6 +15,7 @@ recipients its complete corresponding source under the same licence.
 | The master (`dsp/master*`), the platform glue | X0X | GPL-3.0-only |
 | The second core's start-up and job hand-off (`firmware/hal/fm1_cpu1.*`) | X0X, after what [Melodee](https://github.com/keremimo/melodee) (keremimo)'s dual-core audio found, with [Jangada](https://github.com/zednaked/jangada) (zednaked)'s measurements and mailbox layout | GPL-3.0-only |
 | The shimmer reverb (`dsp/spacevb*`), the tides and pan, the render's pattern, the UI's drawing, the simulator (`host/`) | [Penumbra](https://github.com/MadMooneyham/Penumbra) (Lunar Eclipse Forge) | GPL-3.0-only |
+| The emulator (`web/emu/`: the page, the AudioWorklet, the WebAssembly glue) and the cheat sheet's layout (`web/cheatsheet/`) | X0X's emulator ([fm1-x0x](https://github.com/charlesvestal/fm1-x0x), Charles Vestal, after [Groove OS](https://www.groove-os.com/)'s idea), through Penumbra; `words.js` is [fm1-reader](https://charlesvestal.github.io/fm1-reader/)'s | GPL-3.0-only |
 | Everything else in `firmware/src/{app,dsp}`, `prototype/`, `tests/` | Ombak (Lunar Eclipse Forge) | GPL-3.0-only |
 
 ## Felucca Assets

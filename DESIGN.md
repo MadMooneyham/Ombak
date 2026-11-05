@@ -413,6 +413,28 @@ Published as v1.0 the same day; the site serves it (FM-1_74010000). David ran th
 and from another firmware, and leaving again) and sent the submission mail to thefirmwarehub.com. David has no
 DAW: the MIDI clock (in and out) and notes out are tested in the simulator only, and wait on players' reports.
 
+## 1.1: the drums, angsel, the suling, GONG KEBYAR; the emulator and the cheat sheet
+
+David (2026-11-05): the knob noise is completely resolved. Then: the cheat sheet, and every feature suggested,
+in the most logical order (sounds first, so the cheat sheet and the emulator show them; then the release).
+
+- **Kendang and ceng-ceng** (`dsp/bars.c`: IN_WADON, IN_LANANG, IN_CENG; `engine.c` drums()): a skin's tone
+  falling into place fast plus a slap of noise; the ceng-ceng a hiss over clangorous FM partials. Patterns on an
+  eight-step grid a beat, two figures in turn; strokes a beat 8 (BUSY low: 4), 2 over a 2.4 s beat, 1 over 4 s.
+  They sit in the elaboration's bus (HUSH lets them go). Two partials a drum, three for the cymbals.
+- **Angsel** (SEL on HOME, CC 25): the next beat is a break: unison accents at steps 0 and 10 of 16, nothing else.
+- **Suling** (`engine.c` suling_block): three sines and a narrow band of breath noise on the first core, gliding,
+  its vibrato growing in; circular breathing is real Balinese practice, so it never breaks. On the gendèr's bus.
+- **GONG KEBYAR** (gamelan 8): Peliatan's five-tone pelog (its famous ensemble is a kebyar), 75 a minute, 7 Hz.
+  The heaviest gamelan: about 1.1 to 1.2 million sines a second a core in the simulator at full density, against
+  0.7 for semar pegulingan; economy is there for it, and BENCH on the FM-1 is the judge.
+- **MIDI CC OUT** (SYSTEM): the knobs, tempo, angsel and gamelan out, sent from the audio ISR (one sender).
+- **The work is format 3** (the drums' and suling's params); `settings.c` reads formats 1, 2 and 3 byte by byte,
+  for the work and for MINE (`tests/scenarios/ensemble.pen` saves 1.0's format and loads it).
+- **The emulator** (`web/emu/`, Penumbra's, X0X's before): the simulator in WebAssembly; the site builds it.
+- **The cheat sheet** (`web/cheatsheet/`, with a PDF printed by headless Chrome), linked from the hub's card.
+- Not done: selonding (the sacred iron ensemble; it needs careful sources).
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.

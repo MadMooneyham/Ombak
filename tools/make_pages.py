@@ -8,6 +8,8 @@ http.server in OUT_DIR):
                               metadata inlined; Chrome or Edge, Web MIDI)
   firmware/ombak-VERSION.fwsc the package the installer writes; also the download
   words/                      the screen reader's words files (fm1-reader), every one ever made
+  cheatsheet/                 one printable page (web/cheatsheet), with its PDF
+  emu/                        Ombak in the browser (web/emu: built by web/emu/build.sh into build/emu, if there)
 
   tools/make_pages.py build/ombak-0.1.fwsc 0.1 OUT_DIR
 
@@ -61,7 +63,7 @@ the gongs keep the cycle, and every note shimmers with <i>ombak</i>, the beating
 slightly apart. Ombak is inspired by gamelan, not a gamelan: it owes everything to the living traditions of Bali
 and Java and the communities who play them.</p>
 <p><a class="go" href="install/">Install __VERSION__</a></p>
-<p><a href="firmware/__PKG__">Download the package</a> &nbsp;·&nbsp; <a href="https://github.com/MadMooneyham/Ombak/blob/main/MANUAL.md">Manual</a> &nbsp;·&nbsp; <a href="https://github.com/MadMooneyham/Ombak">Source</a></p>
+<p><a href="firmware/__PKG__">Download the package</a> &nbsp;·&nbsp; <a href="emu/">Play it in the browser</a> &nbsp;·&nbsp; <a href="cheatsheet/">Cheat sheet</a> &nbsp;·&nbsp; <a href="https://github.com/MadMooneyham/Ombak/blob/main/MANUAL.md">Manual</a> &nbsp;·&nbsp; <a href="https://github.com/MadMooneyham/Ombak">Source</a></p>
 <p class="small">To go back to the official firmware, the installer can write it, or use M-VAVE's updater, M-UPGRADE,
 from <a href="https://www.m-vave.com/download">m-vave.com/download</a>. M-VAVE and FM-1 are trademarks of their owners.</p>
 </main>
@@ -95,6 +97,10 @@ def main(pkg, version, out):
     (out / "index.html").write_text(LANDING.replace("__VERSION__", html.escape(version)).replace("__PKG__", name),
                                     encoding="utf-8")
     shutil.copytree(SRC / "web" / "words", out / "words")
+    shutil.copytree(SRC / "web" / "cheatsheet", out / "cheatsheet")
+    emu = SRC / "build" / "emu"
+    if (emu / "index.html").exists():
+        shutil.copytree(emu, out / "emu")
     (out / ".nojekyll").write_text("")
     print(f"site: {out}: index.html, install/ ({product}), firmware/{name} ({len(raw)} B), words/")
 
