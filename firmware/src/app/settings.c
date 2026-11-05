@@ -49,7 +49,8 @@ static void work_sane(work_t *w)
 {
     static const uint8_t MAX_OF[][2] = {{P_ENS, G_ENSEMBLES - 1}, {P_TUNING, G_TUNINGS - 1}, {P_MODE, 3}, {P_CYCLE, 3},
                                         {P_AUTO, 1}, {P_CORE_G, 1}, {P_KOT_G, 1}, {P_PARTS, 15}, {P_K_SUB, 4},
-                                        {P_K_REG, 2}, {P_R_RATE, 1}, {P_R_REG, 2}, {P_O_REG, 2}, {P_E_AFTER, 1}};
+                                        {P_K_REG, 2}, {P_R_RATE, 1}, {P_R_REG, 2}, {P_O_REG, 2}, {P_E_AFTER, 1},
+                                        {P_FORM, G_FORMS - 1}, {P_K_STYLE, G_STYLES - 1}};
     int i, g;
     for (i = 0; i < NP; i++)
         w->p[i] &= 0x7Fu;
@@ -69,12 +70,33 @@ static void work_sane(work_t *w)
     w->loop_kept = w->loop_kept && w->loop_len;
 }
 
+/* format 1 (0.1 .. 0.1.3): without the form and the style */
+typedef struct {
+    uint32_t magic, format;
+    uint8_t p[NP_V1];
+    uint8_t loop_len, loop_kept;
+    int8_t loop[LOOP_MAX];
+} work_v1_t;
+
 int work_load(void)
 {
-    static work_t w;
-    int n = plat_store_load(OBJ_WORK, &w, sizeof w);
-    if (n != (int)sizeof w || w.magic != WORK_MAGIC || w.format != WORK_FORMAT)
+    static union { work_t w; work_v1_t v1; } u;
+    work_t w;
+    int n = plat_store_load(OBJ_WORK, &u, sizeof u), i;
+    if (n == (int)sizeof u.v1 && u.v1.magic == WORK_MAGIC && u.v1.format == 1u) {
+        w.magic = WORK_MAGIC;                    /* an older work: its own, the new params as made */
+        w.format = WORK_FORMAT;
+        for (i = 0; i < NP; i++)
+            w.p[i] = i < NP_V1 ? u.v1.p[i] : engine_param_def(i);
+        w.loop_len = u.v1.loop_len;
+        w.loop_kept = u.v1.loop_kept;
+        for (i = 0; i < LOOP_MAX; i++)
+            w.loop[i] = u.v1.loop[i];
+    } else if (n == (int)sizeof u.w && u.w.magic == WORK_MAGIC && u.w.format == WORK_FORMAT) {
+        w = u.w;
+    } else {
         return -1;                               /* (engine_init has the defaults in place) */
+    }
     work_sane(&w);
     eng_w = w;
     return 0;

@@ -6,7 +6,9 @@
 #include <stdint.h>
 
 #define G_TUNINGS 10
-#define G_ENSEMBLES 5
+#define G_ENSEMBLES 7
+#define G_FORMS 5
+#define G_STYLES 4
 #define G_MAXN 7
 
 enum { FAM_SLENDRO, FAM_PELOG };
@@ -44,9 +46,25 @@ typedef struct {
     uint8_t space;                       /* 0xFF: as it is */
     uint8_t kajar;                       /* the kajar's places */
     uint8_t ring;                        /* the bars' RING (64 as made) */
+    uint8_t form, style;                 /* the gong form (G_FORM), the kotekan's style */
 } g_ensemble_t;
 extern const g_ensemble_t G_ENSEMBLE[G_ENSEMBLES];
 
-/* the cycle's places: what a place is (for the rim's marks), and what the cycle strikes there */
+/* the gong forms (colotomic structures): Ombak's own (any cycle: the gong, the half, the quarters, the kajar
+ * every beat) and the forms from the tradition, each its own length. A line a gong, one character a beat
+ * from the gong's (place 0): 'x' a stroke, 'o' a light one, '.' none. The gongs in order: gong, lanang,
+ * kempur, kemong, kajar (the forms' kempul strikes the kempur, the kenong the kemong, the ketuk and
+ * kempyang the kajar, the kempli the kajar) */
+typedef struct {
+    const char *name;
+    uint8_t len;                         /* 0: the cycle's (P_CYCLE) */
+    const char *line[5];
+} g_form_t;
+extern const g_form_t G_FORM[G_FORMS];
+int g_strike(int form, int g, int pos, int len);      /* 0 none, 1 light, 2 a stroke */
+/* the cycle's places: what a place is (for the rim's marks) */
 enum { PL_GONG, PL_KEMONG, PL_KEMPUR, PL_KAJAR };
-int g_place(int pos, int len);
+int g_place(int form, int pos, int len);
+/* the kotekan's styles */
+enum { KS_CIRCLE, KS_NOROT, KS_NYOGCAG, KS_EMPAT };
+extern const char *const G_STYLE[G_STYLES];

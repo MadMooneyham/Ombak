@@ -144,8 +144,9 @@ static void draw_text_box(uint32_t x, uint32_t y, uint32_t w, const felucca_font
     lcd_sync();                     /* one-shots (boot, crash, UBOOT, update) finish here */
 }
 
-/* The boot screen (Penumbra's, in bronze): the Lunar Eclipse Forge mark (tools/gen_logo.py) in lamplight, in a
- * ring that glows out from its edge into the dark, and a few stars. */
+/* The boot screen: a bronze gong, lit from above left, its boss bright, and the ripples (ombak: the waves)
+ * going out from it into the dark; the name, and the Lunar Eclipse Forge mark (tools/gen_logo.py) by the
+ * maker's name. */
 #include "logo.h"
 #include "dsp/fastmath.h"
 #define C_NIGHT C_BG
@@ -159,42 +160,56 @@ static uint16_t mix565(uint16_t a, uint16_t b, uint32_t t)   /* a to b, t 0..255
 
 static void draw_splash(const char *name, const char *sub)
 {
-    static const uint8_t STARS[][2] = {{14, 18}, {206, 10}, {226, 96}, {22, 120}, {58, 54},
-                                       {188, 132}, {120, 4}, {34, 76}, {214, 52}};
-    const uint16_t moon = RGB(240, 226, 196), corona = RGB(214, 165, 78);
-    const int32_t cx = 120, cy = 70, R = 64;
-    int32_t x, y, ox = cx - LOGO_W / 2, oy = cy - LOGO_H / 2;
-    uint32_t k;
+    const uint16_t bronze = RGB(150, 108, 58), face = RGB(62, 44, 26), shine = RGB(255, 236, 190),
+                   ripple = RGB(214, 165, 78), grey = RGB(168, 153, 138);
+    const float cx = 120.0f, cy = 70.0f, R = 54.0f, BOSS = 17.0f;
+    int32_t x, y, sw, sx;
     lcd_fill(0, 0, 240, 240, C_NIGHT);
     cv_begin(240, 140, C_NIGHT);
-    for (k = 0; k < sizeof STARS / sizeof STARS[0]; k++)
-        cv_pset(STARS[k][0], STARS[k][1], RGB(150, 150, 170));
-    for (y = cy - R - 14; y <= cy + R + 14; y++)      /* the corona: bright at the ring, fading outwards */
-        for (x = cx - R - 14; x <= cx + R + 14; x++) {
-            float d = fm_sqrtf((float)((x - cx) * (x - cx) + (y - cy) * (y - cy))) - (float)R;
-            float a = d < 0.0f ? 1.0f + d * 0.9f : 1.0f - d / 14.0f;
-            if (a > 0.0f && (uint32_t)x < cv_w && (uint32_t)y < cv_h) {
-                uint16_t bg = swap16(cv_px[(uint32_t)y * cv_w + (uint32_t)x]);
-                cv_px[(uint32_t)y * cv_w + (uint32_t)x] = swap16(mix565(bg, corona, (uint32_t)(a * a * 255.0f)));
+    for (y = 0; y < (int32_t)cv_h; y++)
+        for (x = 0; x < 240; x++) {
+            float dx = (float)x - cx, dy = (float)y - cy, d = fm_sqrtf(dx * dx + dy * dy), a;
+            float lit = d > 0.5f ? 0.5f - 0.5f * (dx + dy) * (0.7071f / d) : 0.5f;   /* 1 facing the light */
+            uint16_t c = C_NIGHT;
+            int k;
+            for (k = 0; k < 3; k++) {            /* the ripples, fainter as they go */
+                float rr = R + 12.0f + 13.0f * (float)k, e = 1.0f - (d > rr ? d - rr : rr - d) / 1.6f;
+                if (e > 0.0f)
+                    c = mix565(c, ripple, (uint32_t)(e * (90.0f - 26.0f * (float)k)));
             }
-        }
-    for (y = cy - R + 2; y < cy + R - 1; y++)        /* the moon's dark face inside it */
-        for (x = cx - R + 2; x < cx + R - 1; x++)
-            if ((x - cx) * (x - cx) + (y - cy) * (y - cy) < (R - 1) * (R - 1))
-                cv_pset(x, y, C_NIGHT);
-    for (y = 0; y < LOGO_H; y++)                      /* the mark, its edges blended */
-        for (x = 0; x < LOGO_W; x++) {
-            uint32_t a = LOGO_PX[y * ((LOGO_W + 1) / 2) + x / 2];
-            a = (x & 1) ? (a & 15u) : (a >> 4);
-            if (a) {
-                uint32_t i = (uint32_t)(oy + y) * cv_w + (uint32_t)(ox + x);
-                cv_px[i] = swap16(mix565(swap16(cv_px[i]), moon, a * 17u));
+            if (d < R + 1.0f) {
+                uint16_t g;
+                if (d < BOSS) {                  /* the boss: a dome, its highlight up and to the left */
+                    float hx = dx + 5.0f, hy = dy + 6.0f, h = fm_expf(-(hx * hx + hy * hy) / 60.0f);
+                    g = mix565(mix565(face, bronze, (uint32_t)(200.0f - 120.0f * d / BOSS)), shine, (uint32_t)(h * 235.0f));
+                } else if (d < R - 9.0f) {       /* the face, a little light across it */
+                    g = mix565(face, bronze, (uint32_t)(40.0f + 60.0f * lit * (d - BOSS) / (R - BOSS)));
+                } else {                         /* the rim, catching the light */
+                    g = mix565(mix565(face, bronze, (uint32_t)(110.0f + 145.0f * lit)), shine, (uint32_t)(70.0f * lit * lit));
+                }
+                if (d > BOSS - 1.0f && d < BOSS + 1.0f)   /* the boss's foot, in shadow */
+                    g = mix565(g, face, 140u);
+                a = d > R - 0.5f ? R + 0.5f - d : 1.0f;
+                if (a > 0.0f)
+                    c = mix565(c, g, (uint32_t)(a * 255.0f));
             }
+            cv_px[(uint32_t)y * cv_w + (uint32_t)x] = swap16(c);
         }
     cv_blit(0, 6);
-    cv_begin(240, 60, C_NIGHT);                      /* the names, on the same night */
-    cv_text((240 - text_w(&FONT_M, name)) / 2, 6, &FONT_M, name, RGB(240, 238, 246));
-    cv_text((240 - text_w(&FONT_XS, sub)) / 2, 40, &FONT_XS, sub, RGB(138, 138, 160));
+    cv_begin(240, 60, C_NIGHT);                  /* the names, on the same night; the maker's mark by its name */
+    cv_text((240 - text_w(&FONT_M, name)) / 2, 6, &FONT_M, name, RGB(240, 231, 216));
+    sw = text_w(&FONT_XS, sub) + LOGO_T_W + 6;
+    sx = (240 - sw) / 2;
+    for (y = 0; y < LOGO_T_H; y++)
+        for (x = 0; x < LOGO_T_W; x++) {
+            uint32_t a = LOGO_T_PX[y * ((LOGO_T_W + 1) / 2) + x / 2];
+            a = (x & 1) ? (a & 15u) : (a >> 4);
+            if (a) {
+                uint32_t i = (uint32_t)(38 + y) * cv_w + (uint32_t)(sx + x);
+                cv_px[i] = swap16(mix565(swap16(cv_px[i]), grey, a * 17u));
+            }
+        }
+    cv_text(sx + LOGO_T_W + 6, 40, &FONT_XS, sub, grey);
     cv_blit(0, 160);
     lcd_sync();
 }

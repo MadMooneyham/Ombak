@@ -1,0 +1,57 @@
+# The gong forms and the kotekan's styles: GILAK (8 beats, nyog cag, the lanang in), LADRANG (32, Java's
+# pelog); then each form and each style played a while, nothing clipping; and the boot screen
+splash splash.png
+wait 300
+turn PRESET 4
+wait 200
+expect p0 5
+expect cyclelen 8
+tap SEQ
+tapkey w0
+wait 4000
+tapkey w3
+wait 4000
+expect playing 1
+shot gilak.png
+wav gilak.wav
+wait 8000
+wavstop
+expect clips 0
+tap SEQ
+wait 6000
+turn PRESET 1
+wait 200
+expect p0 6
+expect cyclelen 32
+tap SEQ
+tapkey w2
+wait 6000
+shot ladrang.png
+expect clips 0
+tap SEQ
+wait 6000
+# each style over each form, the kotekan in (SEMAR PEGULINGAN)
+turn PRESET -5
+wait 200
+expect p0 1
+turn K2 20
+tap SEQ
+tapkey w4
+set form 2
+set style 1
+wait 3000
+expect cyclelen 16
+set style 2
+wait 3000
+set form 3
+set style 3
+wait 3000
+set style 0
+set form 4
+wait 3000
+expect cyclelen 32
+set form 0
+wait 3000
+expect cyclelen 16
+expect clips 0
+expect playing 1

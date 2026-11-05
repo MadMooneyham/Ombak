@@ -424,18 +424,21 @@ static void cue(int dir)                          /* FASTER / SLOWER: a STEP (th
 }
 
 /* GAMELAN (EDIT): the rows */
-enum { ER_TUNING, ER_MODE, ER_CYCLE, ER_GONGS, ER_CORE, ER_KOT, ER_REY, ER_ORN, NER };
-static const char *const ER_N[NER] = {"TUNING", "MODE", "CYCLE", "THE GONGS", "CORE ON", "KOTEKAN ON", "REYONG", "ORNAMENTS"};
+enum { ER_TUNING, ER_MODE, ER_FORM, ER_CYCLE, ER_GONGS, ER_CORE, ER_KOT, ER_STYLE, ER_REY, ER_ORN, NER };
+static const char *const ER_N[NER] = {"TUNING", "MODE", "FORM", "CYCLE", "THE GONGS", "CORE ON", "KOTEKAN ON",
+                                      "KOTEKAN", "REYONG", "ORNAMENTS"};
 static void er_text(int r, char *b)
 {
     const uint8_t *p = eng_w.p;
     switch (r) {
     case ER_TUNING: put_s(b, G_TUNING[p[P_TUNING] % G_TUNINGS].name); break;
     case ER_MODE: put_s(b, g_mode_name(p[P_TUNING], p[P_MODE])); break;
+    case ER_FORM: put_s(b, G_FORM[p[P_FORM] % G_FORMS].name); break;
     case ER_CYCLE: put_s(put_i(b, engine_cycle_len()), " BEATS"); break;
     case ER_GONGS: put_s(b, p[P_AUTO] ? "THE CYCLE" : "BY HAND"); break;
     case ER_CORE: put_s(b, p[P_CORE_G] ? "GENDER" : "JUBLAG"); break;
     case ER_KOT: put_s(b, p[P_KOT_G] ? "GENDER" : "GANGSA"); break;
+    case ER_STYLE: put_s(b, G_STYLE[p[P_K_STYLE] % G_STYLES]); break;
     case ER_REY: put_s(b, p[P_PARTS] & PB_REY ? "IN" : "OUT"); break;
     default: put_s(b, p[P_PARTS] & PB_ORN ? "IN" : "OUT"); break;
     }
@@ -448,7 +451,16 @@ static void er_turn(int r, int e)
     switch (r) {
     case ER_TUNING: p[P_TUNING] = (uint8_t)wrap_i(p[P_TUNING] + d, G_TUNINGS); p[P_MODE] = 0; break;
     case ER_MODE: if (g_modes(p[P_TUNING])) p[P_MODE] = (uint8_t)wrap_i(p[P_MODE] + d, g_modes(p[P_TUNING])); break;
-    case ER_CYCLE: p[P_CYCLE] = (uint8_t)wrap_i(p[P_CYCLE] + d, 4); break;
+    case ER_FORM: engine_form(wrap_i(p[P_FORM] + d, G_FORMS)); break;
+    case ER_CYCLE:                                /* (from a form: FREE, at the form's length, then a step) */
+        if (p[P_FORM] % G_FORMS) {
+            int len = engine_cycle_len();
+            p[P_CYCLE] = (uint8_t)(len >= 32 ? 3 : len >= 16 ? 2 : len >= 8 ? 1 : 0);
+            engine_form(0);
+        }
+        p[P_CYCLE] = (uint8_t)wrap_i(p[P_CYCLE] + d, 4);
+        break;
+    case ER_STYLE: p[P_K_STYLE] = (uint8_t)wrap_i(p[P_K_STYLE] + d, G_STYLES); break;
     case ER_GONGS: p[P_AUTO] ^= 1u; break;
     case ER_CORE: p[P_CORE_G] ^= 1u; break;
     case ER_KOT: p[P_KOT_G] ^= 1u; break;
@@ -1127,7 +1139,7 @@ static void draw_home(void)
     for (p = 0; p < len; p++) {
         static const uint16_t COL[4] = {RGB(214, 165, 78), RGB(116, 187, 164), RGB(210, 124, 108), RGB(138, 124, 108)};
         static const float R[4] = {4.0f, 3.0f, 2.6f, 1.2f};
-        int pl = g_place(p, len);
+        int pl = g_place(eng_w.p[P_FORM], p, len);
         disc(rim_x((float)p, len), rim_y((float)p, len), R[pl], eng_w.p[P_AUTO] ? COL[pl] : dim(COL[pl], 7));
     }
     {

@@ -104,21 +104,58 @@ const char *g_name(const g_scale_t *s, int idx) { return s->name[idx - fdiv(idx,
  * space), gong gede (five-tone pelog, 32 beats, slow and breathing). Tempo and ombak on their params' scales:
  * tempo 98 = 44 a minute, 95 = 40, 101 = 48, 25 = 6, 87 = 32; ombak 109 = 6 Hz, 99 = 4.5, 112 = 6.5, 54 = 1.2,
  * 85 = 3 */
+/* and two with the tradition's forms: GILAK (Bali's eight-beat processional and opening form, gong Peliatan,
+ * nyog cag kotekan, 60 a minute) and LADRANG (Java's 32-beat form on Kanyut Mesem pelog: the core and the
+ * gendèr's ornaments, no kotekan, 30 a minute, little ombak). Tempo 110 = 60, 84 = 30 */
 const g_ensemble_t G_ENSEMBLE[G_ENSEMBLES] = {
-    {"GENDER WAYANG", 0, 1, 0, 1, 1, 0x3, 109, 98, 32, 76, 0xFF, 1, 64},
-    {"SEMAR PEGULINGAN", 6, 2, 1, 0, 0, 0xB, 99, 95, 44, 64, 0xFF, 1, 64},
-    {"ANGKLUNG", 4, 1, 1, 0, 0, 0x7, 112, 101, 25, 70, 0xFF, 1, 64},
-    {"STILL", 0, 1, 1, 1, 1, 0x3, 54, 25, 51, 38, 89, 0, 108},
-    {"GONG GEDE", 8, 3, 1, 0, 0, 0x7, 85, 87, 76, 38, 0xFF, 1, 64},
+    {"GENDER WAYANG", 0, 1, 0, 1, 1, 0x3, 109, 98, 32, 76, 0xFF, 1, 64, 0, KS_CIRCLE},
+    {"SEMAR PEGULINGAN", 6, 2, 1, 0, 0, 0xB, 99, 95, 44, 64, 0xFF, 1, 64, 0, KS_CIRCLE},
+    {"ANGKLUNG", 4, 1, 1, 0, 0, 0x7, 112, 101, 25, 70, 0xFF, 1, 64, 0, KS_NOROT},
+    {"STILL", 0, 1, 1, 1, 1, 0x3, 54, 25, 51, 38, 89, 0, 108, 0, KS_CIRCLE},
+    {"GONG GEDE", 8, 3, 1, 0, 0, 0x7, 85, 87, 76, 38, 0xFF, 1, 64, 0, KS_CIRCLE},
+    {"GILAK", 8, 1, 1, 0, 0, 0x7, 99, 110, 20, 90, 0xFF, 1, 64, 1, KS_NYOGCAG},
+    {"LADRANG", 9, 3, 1, 0, 1, 0x9, 54, 84, 51, 50, 0xFF, 1, 76, 4, KS_CIRCLE},
 };
 
-int g_place(int pos, int len)
+/* The forms. GILAK as the University of Guelph / Waterloo teaching gamelan sets it out (Music of the World,
+ * openwa.pressbooks.pub: the female gong on 1, the male on 5, the kempur on 6 and 8, the kempli on the odd
+ * beats); LANCARAN (TWTN TPTN TPTN TPTG), KETAWANG (pTpW pTpN pTpP pTpG) and LADRANG (pTpW pTpN pTpP pTpN
+ * pTpP pTpN pTpP pTpG) as the Javanese gendhing structures (Wikipedia: Colotomy). Java counts to the gong
+ * at the end: its beat 16 (32) is Ombak's place 0 */
+const g_form_t G_FORM[G_FORMS] = {
+    {"FREE", 0, {0, 0, 0, 0, 0}},
+    {"GILAK", 8, {"x.......", "....x...", ".....x.x", "........", "x.x.x.x."}},
+    {"LANCARAN", 16, {"x...............", "................", "......x...x...x.", "x...x...x...x...",
+                      ".x.x.x.x.x.x.x.x"}},
+    {"KETAWANG", 16, {"x...............", "................", "............x...", "x.......x.......",
+                      ".oxo.oxo.oxo.oxo"}},
+    {"LADRANG", 32, {"x...............................", "................................",
+                     "............x.......x.......x...", "x.......x.......x.......x.......",
+                     ".oxo.oxo.oxo.oxo.oxo.oxo.oxo.oxo"}},
+};
+const char *const G_STYLE[G_STYLES] = {"CIRCLING", "NOROT", "NYOG CAG", "EMPAT"};
+
+int g_strike(int form, int g, int pos, int len)
 {
-    if (pos == 0)
+    const g_form_t *f = &G_FORM[(unsigned)form % G_FORMS];
+    if (f->len) {
+        char c = f->line[g % 5][(unsigned)pos % f->len];
+        return c == 'x' ? 2 : c == 'o' ? 1 : 0;
+    }
+    switch (g) {                                 /* FREE: the gong, the half, the quarters, the kajar every beat */
+    case 0: return pos == 0 ? 2 : 0;
+    case 1: case 3: return 2 * pos == len ? 2 : 0;
+    case 2: return pos && 2 * pos != len && len >= 4 && pos % (len / 4) == 0 ? 2 : 0;
+    default: return pos & 1 ? 1 : 2;
+    }
+}
+int g_place(int form, int pos, int len)
+{
+    if (g_strike(form, 0, pos, len))
         return PL_GONG;
-    if (2 * pos == len)
+    if (g_strike(form, 1, pos, len) || g_strike(form, 3, pos, len))
         return PL_KEMONG;
-    if (pos % (len / 4) == 0)
+    if (g_strike(form, 2, pos, len))
         return PL_KEMPUR;
     return PL_KAJAR;
 }

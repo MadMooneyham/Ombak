@@ -52,8 +52,11 @@ enum {
     P_PAN, P_PAN_END = P_PAN + 3, P_SWAY, P_SWAY_END = P_SWAY + 3, P_S_RATE, P_S_OFF,
     /* FX: DECAY, SIZE, SHIMMER, TONE, MOTION, INTERVAL (0..2), LOW CUT, LEVEL */
     P_FX, P_FX_END = P_FX + 7,
+    /* (format 2) the gong form (G_FORM: 0 FREE, the cycle's length CYCLE's), the kotekan's style (G_STYLE) */
+    P_FORM, P_K_STYLE,
     NP
 };
+#define NP_V1 P_FORM                     /* the params a format 1 work has */
 enum { G_GONG, G_LANANG, G_KEMPUR, G_KEMONG, G_KAJAR, G_N };
 enum { GF_LEVEL, GF_TONE, GF_HUM, GF_RING, GF_PLACES, GF_N };
 #define P_GONG(g, f) (P_GONGS + (g) * GF_N + (f))
@@ -61,7 +64,7 @@ enum { PART_GENDER, PART_CORE, PART_KOT, PART_GONGS, NPARTS };
 enum { PB_CORE = 1, PB_KOT = 2, PB_REY = 4, PB_ORN = 8 };
 
 #define WORK_MAGIC 0x3157424Fu           /* "OBW1" */
-#define WORK_FORMAT 1u
+#define WORK_FORMAT 2u
 #define LOOP_MAX 16
 typedef struct {
     uint32_t magic, format;
@@ -73,6 +76,7 @@ extern work_t eng_w;
 uint8_t engine_param_def(int i);         /* as made */
 void engine_work_defaults(void);
 void engine_ensemble(int e);             /* (main loop, stopped) a gamelan's settings into eng_w */
+void engine_form(int f);                 /* the gong form (and the lanang with it) */
 
 /* -------------------------------------------------------------- what it is doing --- */
 extern volatile uint8_t eng_running, eng_ending, eng_pos, eng_loop_state;

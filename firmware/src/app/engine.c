@@ -84,6 +84,18 @@ static void defaults_init(void)
     DEF[P_S_OFF] = 0;
     for (i = 0; i < 8; i++)
         DEF[P_FX + i] = FX_DEF[i];
+    DEF[P_FORM] = 0;
+    DEF[P_K_STYLE] = KS_CIRCLE;
+}
+/* a form with the lanang in it brings it in (FREE leaves it to its PLACES: off as made) */
+void engine_form(int f)
+{
+    int i, lan = 0;
+    f = (int)((unsigned)f % G_FORMS);
+    eng_w.p[P_FORM] = (uint8_t)f;
+    for (i = 0; i < G_FORM[f].len; i++)
+        lan |= g_strike(f, G_LANANG, i, G_FORM[f].len);
+    eng_w.p[P_GONG(G_LANANG, GF_PLACES)] = (uint8_t)(lan ? 1 : 0);
 }
 
 void engine_ensemble(int e)
@@ -106,6 +118,8 @@ void engine_ensemble(int e)
         p[P_SPACE] = g->space;
     p[P_GONG(G_KAJAR, GF_PLACES)] = g->kajar;
     p[P_TG_RING] = p[P_TB_RING] = g->ring;
+    p[P_K_STYLE] = g->style;
+    engine_form(g->form);
 }
 
 void engine_work_defaults(void)
@@ -129,7 +143,12 @@ static float x127(int i) { return PV(i) * (1.0f / 127.0f); }
 static float e2(int i) { return fm_exp2f((x128(i) - 0.5f) * 2.0f); }       /* as made 1, x2 or /2 at the ends */
 static float e4(int i) { return fm_exp2f((x128(i) - 0.5f) * 4.0f); }       /* x4 or /4 (RING: slow playing's long rings) */
 static float lvl(int i) { return PV(i) * 0.01f; }
-static int cycle_len(void) { static const uint8_t L[4] = {4, 8, 16, 32}; return L[eng_w.p[P_CYCLE] & 3]; }
+static int cycle_len(void)
+{
+    static const uint8_t L[4] = {4, 8, 16, 32};
+    const g_form_t *f = &G_FORM[eng_w.p[P_FORM] % G_FORMS];
+    return f->len ? f->len : L[eng_w.p[P_CYCLE] & 3];
+}
 int engine_cycle_len(void) { return cycle_len(); }
 static float target_bpm(void) { return 3.0f * fm_exp2f(PV(P_TEMPO) * (5.0f / 127.0f)); }
 
@@ -520,19 +539,14 @@ static int keep(int g, uint32_t cyc)
 }
 static void cycle_strikes(int pos, int len, uint32_t cyc, uint32_t delay)
 {
-    int pl = g_place(pos, len), kj = eng_w.p[P_GONG(G_KAJAR, GF_PLACES)];
-    if (pl == PL_GONG && keep(G_GONG, cyc))
-        gong(G_GONG, delay, 0.9f);
-    if (pl == PL_KEMONG) {
-        if (keep(G_KEMONG, cyc))
-            gong(G_KEMONG, delay, 0.9f);
-        if (keep(G_LANANG, cyc))
-            gong(G_LANANG, delay, 0.9f);
-    }
-    if (pl == PL_KEMPUR && keep(G_KEMPUR, cyc))
-        gong(G_KEMPUR, delay, 0.9f);
-    if (kj == 1 || (kj == 2 && !(pos & 1)))
-        gong(G_KAJAR, delay, pos & 1 ? 0.65f : 0.85f);
+    const int form = eng_w.p[P_FORM] % G_FORMS;
+    int g, kj = eng_w.p[P_GONG(G_KAJAR, GF_PLACES)], s;
+    for (g = 0; g < G_KAJAR; g++)
+        if (g_strike(form, g, pos, len) && keep(g, cyc))
+            gong(g, delay, 0.9f);
+    s = g_strike(form, G_KAJAR, pos, len);       /* (every other: the strokes, not the light ones) */
+    if (s && (kj == 1 || (kj == 2 && s == 2)))
+        gong(G_KAJAR, delay, s == 2 ? 0.85f : 0.6f);
 }
 
 /* ---------------------------------------------------------- the cycle --- */
@@ -557,9 +571,11 @@ static int next_core(void)
 
 static void begin_beat(uint32_t off)
 {
-    const int pos = eng_pos;
-    int len, final = 0;
+    int pos, len, final = 0;
     float p, d;
+    if (eng_pos >= cycle_len())                  /* a shorter cycle or form chosen: on to its gong */
+        eng_pos = 0;
+    pos = eng_pos;
     if (pos == 0 && (eng_pend_ens >= 0 || eng_pend_mode >= 0)) {   /* a new gamelan or mode arrives with the gong */
         if (eng_pend_ens >= 0)
             engine_ensemble(eng_pend_ens);
@@ -672,20 +688,53 @@ static void elaborate(uint32_t off, int j, int c, int nx)
     float sub_s = cy.dur / (float)GRID;
     int rs;
     if ((parts & PB_KOT) && ks && j % step == 0) {
-        int jk = j / step, kc, kn, note, polos = !(jk & 1);
+        int jk = j / step, kc, kn, pn = NONE, sn = NONE, turned, t, k;
         float lo = (eng_w.p[P_KOT_G] ? 250.0f : 300.0f) * fm_exp2f((float)((int)eng_w.p[P_K_REG] - 1));
-        float v = (0.5f + dens * 0.3f) * lv * (0.85f + 0.2f * rnd01()) * (polos ? 1.0f : 0.92f) * lvl(P_L_KOT);
+        float v = (0.5f + dens * 0.3f) * lv * (0.85f + 0.2f * rnd01()) * lvl(P_L_KOT);
+        const int inst = eng_w.p[P_KOT_G] ? IN_GENDER : IN_GANGSA;
+        const uint32_t damp = (uint32_t)(sub_s * (float)step * 0.9f);
         kc = fold(c, lo);
         kn = g_near(&sc, nx, kc);
         if (pitch(kn) < lo * 0.94f)
             kn += sc.n;
         if (pitch(kn) > lo * 2.6f)
             kn -= sc.n;
-        note = kotekan_note(kc, kn, jk, ks);
-        if (!sparse(j, P_K_SPARSE))
-            strike_h(polos ? H_POLOS : H_SANGSIH, eng_w.p[P_KOT_G] ? IN_GENDER : IN_GANGSA, PART_KOT, pitch(note), v,
-                     polos ? -0.4f : 0.4f, off + (polos ? 0u : (uint32_t)(rnd01() * 260.0f)),
-                     (uint32_t)(sub_s * (float)step * 0.9f));
+        turned = jk && (float)jk >= (float)ks * turn_at(P_K_TURN);
+        t = turned ? kn : kc;
+        switch (eng_w.p[P_K_STYLE] % G_STYLES) {
+        case KS_NOROT:                           /* the note and the one above it, in turn; then the next and its */
+            if (jk & 1)
+                sn = t + 1;
+            else
+                pn = t;
+            break;
+        case KS_NYOGCAG: {                       /* one line, the parts in turn, walking to the next note */
+            int d = kn - kc, s = d > 0 ? 1 : d < 0 ? -1 : (cy.beat_no & 1u ? 1 : -1), ad = d * s, lead = ks - jk, n;
+            n = jk == 0 ? kc : lead <= ad ? kn - s * lead : ((lead - ad) & 1) ? kc - s : kc;
+            if (jk & 1)
+                sn = n;
+            else
+                pn = n;
+            break;
+        }
+        case KS_EMPAT:                           /* four tones: the polos the lower three, the sangsih the upper two,
+                                                    together on the first */
+            k = jk & 3;
+            pn = k == 0 || k == 3 ? t : k == 1 ? t - 1 : NONE;
+            sn = k == 0 ? t + 2 : k == 2 ? t + 1 : NONE;
+            break;
+        default:                                 /* circling (as made) */
+            if (jk & 1)
+                sn = kotekan_note(kc, kn, jk, ks);
+            else
+                pn = kotekan_note(kc, kn, jk, ks);
+            break;
+        }
+        if (pn != NONE && !sparse(j, P_K_SPARSE))
+            strike_h(H_POLOS, inst, PART_KOT, pitch(pn), v, -0.4f, off, damp);
+        if (sn != NONE && !sparse(j, P_K_SPARSE))
+            strike_h(H_SANGSIH, inst, PART_KOT, pitch(sn), v * (pn != NONE ? 0.8f : 0.92f), 0.4f,
+                     off + (uint32_t)(rnd01() * 260.0f), damp);
     }
     rs = ks >= 4 && dens > 0.2f ? ks / (eng_w.p[P_R_RATE] ? 4 : 2) : 0;   /* the reyong: half the kotekan, or a quarter */
     if ((parts & PB_REY) && rs >= 1 && j % (GRID / rs) == 0) {

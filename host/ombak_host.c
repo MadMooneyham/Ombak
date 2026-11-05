@@ -601,6 +601,17 @@ int main(int argc, char **argv)
                 enc_acc[e] += s;
                 run_ms(gap);
             }
+        } else if (!strcmp(cmd, "set")) {             /* set form|style V: as GAMELAN's rows set them */
+            if (!strcmp(a, "form"))
+                engine_form(atoi(b));
+            else if (!strcmp(a, "style"))
+                eng_w.p[P_K_STYLE] = (uint8_t)atoi(b);
+            else
+                eng_w.p[atoi(a) % NP] = (uint8_t)atoi(b);
+        } else if (!strcmp(cmd, "splash")) {          /* the boot screen, to a PNG */
+            draw_splash(FW_NAME, "LUNAR ECLIPSE FORGE");
+            snprintf(out, sizeof out, "%s/%s", dir, a);
+            png_write(out);
         } else if (!strcmp(cmd, "master"))
             master = (uint32_t)atoi(a);
         else if (!strcmp(cmd, "midi")) {

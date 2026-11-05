@@ -162,7 +162,7 @@ prototype's answers, for David to listen to and overrule; the firmware follows w
     HOME's four knobs as a first guess: OMBAK, DENSITY, SPACE, BREATH (SELECT: mode or tuning). The header
     carries the name and the tempo, as Penumbra's.
 - **Next for the prototype,** if David wants: the kendang's cues as sound (a stroke pattern before each
-  change), real colotomic forms, a "free" mode with no beat, and the ombak knob reaching ringing notes.
+  change), real colotomic forms (0.1.4: gilak, lancaran, ketawang, ladrang), a "free" mode with no beat, and the ombak knob reaching ringing notes.
 
 ## Performance and the interface (first layout, 2026-11-04)
 
@@ -326,6 +326,30 @@ and the cheat sheet, the manual.
 
 **To find out on the FM-1:** how hard it works (BENCH, and SEL there for the load test: 48 long gendèr notes at
 once), whether the gongs' lows and the glow read well, how the knobs feel in their steps, and how it all sounds.
+
+## 0.1.4: the forms, the kotekan's styles, the boot screen
+
+David on 0.1.3 (2026-11-05): it sounds great, and the load is reasonable even at high density and tempo. Asked
+for a few more patterns, and the Penumbra eclipse gone from the boot screen.
+
+- **Gong forms** (GAMELAN: FORM; `G_FORM` in `gamelan.c`): FREE (Ombak's own: the gong, the half, the quarters,
+  any CYCLE), and four from the tradition, each its own length: **GILAK** (8: the female gong on 1, the male on 5,
+  the kempur on 6 and 8, the kempli on the odd beats, as the Guelph/Waterloo teaching gamelan sets it out in
+  *Music of the World*, openwa.pressbooks.pub), **LANCARAN** (16, TWTN TPTN TPTN TPTG), **KETAWANG** (16, pTpW
+  pTpN pTpP pTpG) and **LADRANG** (32), the Javanese gendhing structures as Wikipedia's *Colotomy* gives them.
+  Ombak's instruments stand in: the kempul is the kempur, the kenong the kemong, the ketuk and kempyang the kajar
+  (kempyang lighter), the kempli the kajar. Java counts to the gong at the end, so its last beat is Ombak's
+  place 0. A form with the lanang in it (gilak) brings the lanang in; CYCLE turned from a form goes back to FREE.
+- **Kotekan styles** (GAMELAN: KOTEKAN): CIRCLING (as made), NOROT (the note and the one above in turn, then the
+  next and its own, anticipating it), NYOG CAG (one line, the parts in turn, walking to the next note), EMPAT
+  (four tones: the polos the lower three, the sangsih the upper two, together on the first; after ubit empat,
+  simplified). These are Ombak's readings of the techniques' outlines, not transcriptions.
+- **Two gamelan:** GILAK (gong Peliatan, 8 beats, nyog cag, 60 a minute) and LADRANG (Kanyut Mesem pelog, pathet
+  nem, 32 beats, the core and gendèr ornaments without kotekan, 30 a minute, little ombak). ANGKLUNG now plays
+  norot.
+- **The boot screen:** a bronze gong lit from above left, ripples going out from it, the name, and the Lunar
+  Eclipse Forge mark by the maker's name.
+- The work is format 2 (the form and the style); a format 1 work loads with them as made.
 
 ## When the firmware starts: what comes from Penumbra
 
