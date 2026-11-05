@@ -453,6 +453,9 @@ it); add the selonding, best effort on authenticity.
   0.6 Hz, nyog cag for the nyong-nyong's interlocking. Its five-tone modes are not offered (no source in hand).
 - Tests: `selonding.pen` (iron, the keys, a held part not switching, the ending on 11, bronze again).
 
+Published by David as v1.2 (2026-11-05); the site serves it, with the emulator and the cheat sheet (built on
+GitHub with Emscripten). Next, in David's words: polish the interface as the performance workflows are found.
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.
