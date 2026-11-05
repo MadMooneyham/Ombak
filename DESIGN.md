@@ -409,6 +409,10 @@ David published 0.1.6 as a full release and asked for Ombak to be one: 1.0 is 0.
 release (identity `FM-1_74010000`, ABOUT says `1.0`, no BETA), with RELEASE-1.0.md, the README, the manual and
 BUILDING saying so.
 
+Published as v1.0 the same day; the site serves it (FM-1_74010000). David ran the hub's install tests (from V15
+and from another firmware, and leaving again) and sent the submission mail to thefirmwarehub.com. David has no
+DAW: the MIDI clock (in and out) and notes out are tested in the simulator only, and wait on players' reports.
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.
