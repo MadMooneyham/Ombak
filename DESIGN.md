@@ -388,6 +388,10 @@ David on 0.1.4 (2026-11-05), flashed and tested on the FM-1: "It runs great. Sou
   to the BPM and the cycle on its gong after 16.5 beats, a minute at 100 with BREATH up still in phase, the
   keys and gongs out.
 
+**Released** (2026-11-05): 0.1.5 published by David as a pre-release on github.com/MadMooneyham/Ombak (tag
+v0.1.5); the site and installer at madmooneyham.github.io/Ombak, built by `.github/workflows/pages.yml`. Pushes
+go through Ombak's own deploy key (`~/.ssh/id_ombak`, the `github-ombak` host alias in `~/.ssh/config`).
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.
