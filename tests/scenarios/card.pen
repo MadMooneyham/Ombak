@@ -1,0 +1,19 @@
+# The hub's card (assets/card.png): HOME as it plays, SEMAR PEGULINGAN in full flow, the Ongkara glowing
+wait 300
+turn K2 15
+tap SEQ
+tapkey w0
+wait 3000
+tapkey w2
+wait 2400
+tapkey w4
+wait 2400
+tapkey w3
+wait 2400
+tapkey w1
+wait 1500
+tap HOME
+wait 2600
+shot card.png
+expect playing 1
+expect clips 0

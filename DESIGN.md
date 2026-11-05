@@ -392,6 +392,17 @@ David on 0.1.4 (2026-11-05), flashed and tested on the FM-1: "It runs great. Sou
 v0.1.5); the site and installer at madmooneyham.github.io/Ombak, built by `.github/workflows/pages.yml`. Pushes
 go through Ombak's own deploy key (`~/.ssh/id_ombak`, the `github-ombak` host alias in `~/.ssh/config`).
 
+## 0.1.6: the newer flash chip; the hub's card
+
+The hub's submit page (2026-11-05) warns that FM-1s sold since autumn 2026 carry a UC25HQ80 flash (JEDEC
+0xB36014) instead of the Puya P25Q80 (0x856014), with the same commands. Ombak (and Penumbra, whose code it is)
+accepted only the Puya: on a newer unit nothing would be saved. 0.1.6 accepts both (`main_fm1.c`); the update
+loader checks no ID. Penumbra needs the same fix.
+
+For the hub: `fmhub.json` in the root (its card's text, kind "other", the manual's cheat sheet, the bronze
+#D6A54E) and `assets/card.png` (HOME playing, from `tests/scenarios/card.pen`). Submission is a mail to the
+hub's maintainer, which David sends.
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.

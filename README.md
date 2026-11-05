@@ -11,7 +11,7 @@ and the communities who play them.
 **[MANUAL.md](MANUAL.md)** is how to play it. See [DESIGN.md](DESIGN.md) for where it stands. To hear the sound,
 open [prototype/index.html](prototype/index.html) in a browser and play it from the computer keyboard.
 
-The firmware is in beta (0.1.5) for testing: [BUILDING.md](BUILDING.md) builds and installs it. It runs on
+The firmware is in beta (0.1.6) for testing: [BUILDING.md](BUILDING.md) builds and installs it. It runs on
 [Penumbra](https://github.com/MadMooneyham/Penumbra)'s platform; [LICENSING.md](LICENSING.md) credits everyone
 whose work it stands on.
 

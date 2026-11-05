@@ -1,6 +1,6 @@
 # Ombak manual
 
-Ombak 0.1.5 for the M-VAVE FM-1, by Lunar Eclipse Forge.
+Ombak 0.1.6 for the M-VAVE FM-1, by Lunar Eclipse Forge.
 
 Ombak is an instrument inspired by the gamelan of Bali and Java. It is not a gamelan, and it does not
 pretend to be one. It plays measured tunings from real ensembles, and it builds its parts the way a gamelan
