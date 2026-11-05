@@ -403,6 +403,12 @@ For the hub: `fmhub.json` in the root (its card's text, kind "other", the manual
 #D6A54E) and `assets/card.png` (HOME playing, from `tests/scenarios/card.pen`). Submission is a mail to the
 hub's maintainer, which David sends.
 
+## 1.0 (2026-11-05)
+
+David published 0.1.6 as a full release and asked for Ombak to be one: 1.0 is 0.1.6's firmware as a full
+release (identity `FM-1_74010000`, ABOUT says `1.0`, no BETA), with RELEASE-1.0.md, the README, the manual and
+BUILDING saying so.
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.
