@@ -10,7 +10,8 @@
  *            four knobs each, ALGO the page's own
  *   FX       SPACE, SPACE 2: Penumbra's reverb (SELECT: the row)
  *   GAMELAN  EDIT: the gamelan playing, a list (SELECT: the row, ALGO, a knob or SEL: change it)
- *   LIBRARY  LFO: the five gamelan (SEL: open, at the next gong)
+ *   LIBRARY  LFO: the seven gamelan (SEL: open, at the next gong), then MINE 1-4 (SAVE: keep the work there;
+ *            SEL: open it)
  *   SYSTEM   GLO: the settings; GLO again: BENCH
  * Buttons act when let go; held, they say what they do. SEQ the cycle, ARP the gongs (the cycle or the
  * hand), REC / PLAY the loop (PLAY held, or REC with PLAY: clear), OCT- / OCT+, SAVE.

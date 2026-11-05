@@ -35,6 +35,10 @@ The tunings are measured sets, as the Scala scale archive (Manuel Op de Coul) tr
 *Music in Bali* (1966), Surjodiningrat, Sudarjana & Susanto, *Tone measurements of outstanding Javanese gamelans*
 (1972), and others (`firmware/src/app/gamelan.c` names each).
 
+The gong forms: gilak as the University of Guelph and University of Waterloo teaching resources set it out
+(Dewa Made Suparta and Maisie Sum; *Music of the World*, openwa.pressbooks.pub), and the Javanese lancaran,
+ketawang and ladrang as Wikipedia's *Colotomy* gives them. Facts, not text, are taken from both.
+
 ## Respect
 
 Ombak is an instrument inspired by gamelan, not a gamelan. The Ongkara is a sacred syllable in Balinese

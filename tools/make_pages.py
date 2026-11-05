@@ -61,7 +61,7 @@ the gongs keep the cycle, and every note shimmers with <i>ombak</i>, the beating
 slightly apart. Ombak is inspired by gamelan, not a gamelan: it owes everything to the living traditions of Bali
 and Java and the communities who play them.</p>
 <p><a class="go" href="install/">Install __VERSION__</a></p>
-<p><a href="firmware/__PKG__">Download the package</a> &nbsp;·&nbsp; <a href="https://github.com/MadMooneyham/Ombak">Source</a></p>
+<p><a href="firmware/__PKG__">Download the package</a> &nbsp;·&nbsp; <a href="https://github.com/MadMooneyham/Ombak/blob/main/MANUAL.md">Manual</a> &nbsp;·&nbsp; <a href="https://github.com/MadMooneyham/Ombak">Source</a></p>
 <p class="small">To go back to the official firmware, the installer can write it, or use M-VAVE's updater, M-UPGRADE,
 from <a href="https://www.m-vave.com/download">m-vave.com/download</a>. M-VAVE and FM-1 are trademarks of their owners.</p>
 </main>
