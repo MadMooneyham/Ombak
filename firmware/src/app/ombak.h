@@ -16,7 +16,7 @@
 #define SET_FORMAT 1u
 typedef struct {
     uint32_t magic, format;
-    uint8_t midi_ch;                     /* 1-16, 0 off (MIDI is not yet used) */
+    uint8_t midi_ch;                     /* 1-16, 0 off (MIDI in: engine.c midi_in) */
     uint8_t one_core;                    /* 1: the second core stays off (applies at the next power-on) */
     uint8_t out_loud;                    /* 1: the output 6 dB hotter */
     uint8_t usb_full;                    /* 1: USB audio at full level, MASTER for the FM-1's own outputs */
@@ -32,6 +32,11 @@ int settings_save(void);                 /* 0 = saved */
 void settings_apply(void);
 int work_load(void);                     /* the work (eng_w) saved: 0 = loaded */
 int work_save(void);
+/* MINE: four works of your own in the library (OBJ_USER), kept with SAVE there */
+#define MINE_N 4
+int mine_kept(int i);                    /* 1: slot i has a work */
+int mine_open(int i);                    /* slot i into eng_w: 0 = done */
+int mine_keep(int i);                    /* eng_w into slot i (and the flash): 0 = done */
 
 void ui_init(void);
 void ui_start(void);                     /* once, after boot: PLAY AT POWER-ON */

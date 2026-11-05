@@ -103,3 +103,54 @@ int work_load(void)
 }
 
 int work_save(void) { return plat_store_save(OBJ_WORK, &eng_w, sizeof eng_w); }
+
+/* MINE: the four slots, in RAM from the first use (one object: OBJ_USER) */
+#define MINE_MAGIC 0x314D424Fu           /* "OBM1" */
+static struct {
+    uint32_t magic, format;
+    uint8_t kept[MINE_N];
+    work_t w[MINE_N];
+} mine;
+_Static_assert(sizeof mine <= PLAT_STORE_MAX, "MINE fits one object");
+static uint8_t mine_ready;
+static void mine_load(void)
+{
+    int i, n;
+    if (mine_ready)
+        return;
+    mine_ready = 1;
+    n = plat_store_load(OBJ_USER, &mine, sizeof mine);
+    if (n != (int)sizeof mine || mine.magic != MINE_MAGIC || mine.format != WORK_FORMAT) {
+        mine.magic = MINE_MAGIC;
+        mine.format = WORK_FORMAT;
+        for (i = 0; i < MINE_N; i++)
+            mine.kept[i] = 0;
+    }
+    for (i = 0; i < MINE_N; i++)
+        if (mine.kept[i] && (mine.w[i].magic != WORK_MAGIC || mine.w[i].format != WORK_FORMAT))
+            mine.kept[i] = 0;
+}
+int mine_kept(int i)
+{
+    mine_load();
+    return i >= 0 && i < MINE_N && mine.kept[i];
+}
+int mine_open(int i)
+{
+    work_t w;
+    if (!mine_kept(i))
+        return -1;
+    w = mine.w[i];
+    work_sane(&w);
+    eng_w = w;
+    return 0;
+}
+int mine_keep(int i)
+{
+    mine_load();
+    if (i < 0 || i >= MINE_N)
+        return -1;
+    mine.w[i] = eng_w;
+    mine.kept[i] = 1;
+    return plat_store_save(OBJ_USER, &mine, sizeof mine);
+}

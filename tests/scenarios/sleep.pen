@@ -1,0 +1,26 @@
+# SLEEP 20 minutes over STILL: at 15 the ending is cued, and the ensemble closes on the gong; by 20 all is still
+listen
+wait 300
+turn PRESET 2
+wait 200
+expect p0 3
+tap SEQ
+tapkey w0
+tap GLO
+wait 100
+turn SELECT 1
+tap SEL
+wait 100
+said SLEEP 20 MIN
+tap HOME
+wait 100
+shot sleep_home.png
+wait 890000
+expect playing 1
+expect ending 0
+wait 20000
+said SLEEP: THE ENDING
+wait 300000
+expect playing 0
+said SLEEP: STILL
+expect clips 0

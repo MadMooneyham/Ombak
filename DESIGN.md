@@ -322,7 +322,8 @@ thefirmwarehub.com as David found on 2026-11-04; Penumbra's is 73). It installs 
   holds, FREEZE and HUSH, STILL sinking below 6 a minute, the ending, a reboot keeping the work; no clicks.
 
 **Not yet:** MIDI (in and out, the clock), user gamelan in the library, A/B, SLEEP, the web installer's own pages
-and the cheat sheet, the manual.
+and the cheat sheet, the manual. (0.1.4: MIDI in, MINE, A/B and SLEEP done; MIDI out and the clock still to
+come.)
 
 **To find out on the FM-1:** how hard it works (BENCH, and SEL there for the load test: 48 long gendèr notes at
 once), whether the gongs' lows and the glow read well, how the knobs feel in their steps, and how it all sounds.
@@ -350,6 +351,19 @@ for a few more patterns, and the Penumbra eclipse gone from the boot screen.
 - **The boot screen:** a bronze gong lit from above left, ripples going out from it, the name, and the Lunar
   Eclipse Forge mark by the maker's name.
 - The work is format 2 (the form and the style); a format 1 work loads with them as made.
+- **MIDI in** (SYSTEM: MIDI CHANNEL, 1 as made, or OFF): white keys from middle C play the tones in turn (the
+  gendèr at once, velocity its stroke, and the next core note), black keys strike the gongs (C# gong, D# lanang,
+  F# kempur, G# kemong, A# kajar), the sustain pedal lifts the damping hand, CC 20–23 HOME's OMBAK, DENSITY,
+  SPACE, BREATH (CC 1 DENSITY too), CC 24 the tempo, a program change the gamelan at the next gong (stopped: as
+  the cycle starts), Start and Stop the cycle, CC 120/123 damp everything. MIDI changes are not autosaved.
+  Not yet: MIDI out, the clock.
+- **SLEEP** (SYSTEM, Penumbra's): off, 20, 40, 60 or 90 minutes, this session only. Five minutes before, it cues
+  the ending (slowing, thinning, closing on the gong); at the time, anything still going stops and rings out.
+  HOME shows the minutes left.
+- **MINE** (LIBRARY): four slots for works of your own after the seven gamelan (the list scrolls now: with seven
+  it had run off the screen). SAVE on a slot keeps the work playing there (`OBJ_USER`), SEL opens it, at once.
+- **A/B** (SHAPE's SEL): two shapes of the gamelan playing, this session's: everything from HOME's knobs to the
+  FX, not the gamelan, form or kotekan style. B starts as A.
 
 ## When the firmware starts: what comes from Penumbra
 

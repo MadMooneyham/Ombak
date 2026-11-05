@@ -1,0 +1,40 @@
+# MIDI in on channel 1: Start runs the cycle, white keys lead the core (middle C the first tone), black keys
+# strike the gongs, CCs move HOME's knobs and the tempo, a program change brings a gamelan at the gong, Stop
+wait 300
+midi FA 00 00
+wait 300
+expect playing 1
+midi 90 3C 64
+wait 2500
+expect core 0
+midi 80 3C 00
+midi 90 40 70
+wait 2500
+expect core 2
+midi 80 40 00
+midi 90 31 7F
+wait 200
+expect gong_ms <300
+midi B0 14 20
+midi B0 15 7F
+midi B0 18 6E
+wait 300
+expect p8 32
+expect p9 127
+expect p12 110
+midi B0 40 7F
+midi 90 3E 60
+midi 90 41 60
+midi B0 40 00
+midi C0 05 00
+wait 20000
+expect p0 5
+expect cyclelen 8
+expect clips 0
+# another channel is not ours
+midi 91 30 64
+wait 2000
+expect core 3
+midi FC 00 00
+wait 300
+expect playing 0

@@ -66,8 +66,18 @@ typedef struct {
     uint8_t last_loop;
     uint8_t rs_ask;
     uint32_t rs_until;
+    uint8_t mine;                          /* the MINE slot opened or kept (1..4), 0 none */
+    uint8_t ab_on, ab_b;                   /* A/B in use; B playing */
+    uint8_t sleep, sleep_step;             /* SLEEP's choice (this session's); how far its letting go has got */
+    uint32_t sleep_at;                     /* when it is all still */
 } ui_t;
 static ui_t ui;
+/* SLEEP (Penumbra's): in so many minutes Ombak lets go: in the last five it cues the ending (the ensemble slows,
+ * thins and closes on the gong), and at the end anything still going stops and rings out */
+#define SLEEPS 5
+static const uint8_t SLEEP_MIN[SLEEPS] = {0, 20, 40, 60, 90};
+#define SLEEP_LAST_MS 300000u
+static int sleep_left_ms(void) { return (int)(ui.sleep_at - plat_ms()); }
 
 /* ============================================================ text helpers === */
 static char *put_s(char *b, const char *s)
@@ -403,6 +413,7 @@ static void mode_turn(int e)                      /* SELECT on HOME: the modes, 
 static void gamelan_go(int e)                     /* PRESETS, LIBRARY's SEL: a gamelan, arriving with the gong */
 {
     e = wrap_i(e, G_ENSEMBLES);
+    ui.mine = 0;
     if (!eng_running) {
         engine_ensemble(e);
         changed();
@@ -473,13 +484,21 @@ static void er_turn(int r, int e)
 }
 
 /* SYSTEM */
-enum { R_HOME, R_AUTOPLAY, R_OUTLOUD, R_USBFULL, R_CORES, R_RESET, R_ABOUT, NROWS };
-static const char *const ROW_N[NROWS] = {"HOME", "PLAY AT POWER-ON", "OUTPUT LEVEL", "USB AUDIO", "2ND CORE", "RESET SOUND", "ABOUT"};
+enum { R_HOME, R_SLEEP, R_AUTOPLAY, R_MIDI, R_OUTLOUD, R_USBFULL, R_CORES, R_RESET, R_ABOUT, NROWS };
+static const char *const ROW_N[NROWS] = {"HOME", "SLEEP", "PLAY AT POWER-ON", "MIDI CHANNEL", "OUTPUT LEVEL",
+                                         "USB AUDIO", "2ND CORE", "RESET SOUND", "ABOUT"};
 static void row_text(int r, char *b)
 {
     switch (r) {
     case R_HOME: put_s(b, cfg.home ? "THE GONG" : "THE ONGKARA"); break;
     case R_AUTOPLAY: put_s(b, cfg.autoplay ? "ON" : "OFF"); break;
+    case R_MIDI: if (cfg.midi_ch) put_i(b, cfg.midi_ch); else put_s(b, "OFF"); break;
+    case R_SLEEP:
+        if (ui.sleep)
+            put_s(put_i(b, SLEEP_MIN[ui.sleep % SLEEPS]), " MIN");
+        else
+            put_s(b, "OFF");
+        break;
     case R_OUTLOUD: put_s(b, cfg.out_loud ? "LOUD" : "NORMAL"); break;
     case R_USBFULL: put_s(b, cfg.usb_full ? "FULL" : "MASTER"); break;
     case R_CORES: put_s(b, cfg.one_core ? "OFF" : "ON"); break;
@@ -487,12 +506,20 @@ static void row_text(int r, char *b)
     default: put_s(b, OMB_VERSION); break;
     }
 }
-static void row_set(int r)
+static void row_set(int r, int e)                 /* SEL (e 1) or a knob turned */
 {
     char v[24];
     switch (r) {
     case R_HOME: cfg.home ^= 1u; break;
     case R_AUTOPLAY: cfg.autoplay ^= 1u; break;
+    case R_MIDI: cfg.midi_ch = (uint8_t)wrap_i(cfg.midi_ch + (e < 0 ? -1 : 1), 17); break;   /* 0 off, 1 .. 16 */
+    case R_SLEEP:                                 /* (from now; not saved) */
+        ui.sleep = (uint8_t)wrap_i(ui.sleep + (e < 0 ? -1 : 1), SLEEPS);
+        ui.sleep_at = plat_ms() + (uint32_t)SLEEP_MIN[ui.sleep] * 60000u;
+        ui.sleep_step = 0;
+        row_text(r, v);
+        say("SLEEP ", v);
+        return;
     case R_OUTLOUD: cfg.out_loud ^= 1u; break;
     case R_USBFULL: cfg.usb_full ^= 1u; break;
     case R_CORES: cfg.one_core ^= 1u; break;
@@ -520,6 +547,57 @@ static void row_set(int r)
     say(ROW_N[r], 0);
 }
 
+/* LIBRARY: the gamelan, then MINE (four works of your own: SAVE there keeps the work playing, SEL opens it) */
+#define NLIB (G_ENSEMBLES + MINE_N)
+static void lib_name(int r, char *b)
+{
+    if (r < G_ENSEMBLES)
+        put_s(b, G_ENSEMBLE[r].name);
+    else
+        put_i(put_s(b, "MINE "), r - G_ENSEMBLES + 1);
+}
+static void lib_open(int r)
+{
+    char n[24];
+    if (r < G_ENSEMBLES) {
+        ui.mine = 0;
+        gamelan_go(r);
+        return;
+    }
+    lib_name(r, n);
+    if (mine_open(r - G_ENSEMBLES)) {
+        warn("EMPTY: SAVE KEEPS THE WORK HERE", 0);
+        return;
+    }
+    ui.mine = (uint8_t)(r - G_ENSEMBLES + 1);
+    ui.ab_on = 0;                                 /* (A/B starts again from what was opened) */
+    engine_pend_ens(-1);
+    engine_pend_mode(-1);
+    changed();
+    say(n, 0);
+}
+
+/* A/B (SHAPE's SEL): two shapes of the gamelan playing, this session's: everything shaped (HOME's knobs to the FX),
+ * not the gamelan, its form or its kotekan; B starts as a copy of A */
+static uint8_t ab_other[P_FX_END + 1];
+static void ab_swap(void)
+{
+    int i;
+    if (!ui.ab_on) {
+        for (i = P_OMBAK; i <= P_FX_END; i++)
+            ab_other[i] = eng_w.p[i];
+        ui.ab_on = 1;
+    }
+    for (i = P_OMBAK; i <= P_FX_END; i++) {
+        uint8_t t = eng_w.p[i];
+        eng_w.p[i] = ab_other[i];
+        ab_other[i] = t;
+    }
+    ui.ab_b ^= 1u;
+    changed();
+    say(ui.ab_b ? "B" : "A", ui.ab_b ? ": SEL BACK TO A" : ": SEL TO B");
+}
+
 /* ================================================================ saving === */
 #define SAVE_QUIET_MS 2000u
 static void save_now(void)
@@ -539,8 +617,8 @@ static void autosave(void)
 
 /* ================================================================ buttons === */
 static const char *const HELP[NB] = {
-    [B_FX] = "FX. HELD: THROWS", [B_SEL] = "THE PAGE'S ACTION", [B_ENV] = "SHAPE", [B_LFO] = "LIBRARY",
-    [B_EDIT] = "GAMELAN", [B_GLO] = "SYSTEM, BENCH", [B_HOME] = "HOME", [B_SAVE] = "SAVE. HOLDING FX: KEEP",
+    [B_FX] = "FX. HELD: THROWS", [B_SEL] = "THE PAGE'S ACTION. SHAPE: A/B", [B_ENV] = "SHAPE", [B_LFO] = "LIBRARY",
+    [B_EDIT] = "GAMELAN", [B_GLO] = "SYSTEM, BENCH", [B_HOME] = "HOME", [B_SAVE] = "SAVE. LIBRARY: INTO MINE. HOLDING FX: KEEP",
     [B_ARP] = "THE GONGS: CYCLE OR HAND", [B_SEQ] = "THE CYCLE: START, STOP", [B_REC] = "LOOP THE CORE",
     [B_OCTDN] = "WHITE KEYS DOWN", [B_OCTUP] = "WHITE KEYS UP"};
 static void set_view(int v)
@@ -593,6 +671,15 @@ static void button(int i)
             ui.thr_kept = 1;
             ui.used |= 1u << B_FX;
             say("THROWS KEPT", 0);
+        } else if (ui.view == V_LIB && ui.lrow >= G_ENSEMBLES) {   /* LIBRARY on MINE: kept there */
+            char n[24];
+            lib_name(ui.lrow, n);
+            if (mine_keep(ui.lrow - G_ENSEMBLES))
+                warn("SAVE FAILED", 0);
+            else {
+                ui.mine = (uint8_t)(ui.lrow - G_ENSEMBLES + 1);
+                say("KEPT IN ", n);
+            }
         } else {
             save_now();
             say("SAVED", 0);
@@ -609,11 +696,13 @@ static void button(int i)
     }
     case B_SEL:
         if (ui.view == V_SYSTEM)
-            row_set(ui.row);
+            row_set(ui.row, 1);
         else if (ui.view == V_EDIT)
             er_turn(ui.erow, 1);
         else if (ui.view == V_LIB)
-            gamelan_go(ui.lrow);
+            lib_open(ui.lrow);
+        else if (ui.view == V_SHAPE)
+            ab_swap();
         else if (ui.view == V_BENCH) {
             int on = !engine_load_testing();
             engine_load_test(on);
@@ -631,7 +720,13 @@ static void select_turn(int e)
     case V_SHAPE: ui.page = (uint8_t)wrap_i(ui.page + e, NPG); ann_say(PAGE[ui.page].name, 0, ANN_NOW); break;
     case V_FX: ui.fxrow = (uint8_t)wrap_i(ui.fxrow + e, NFXROWS); ann_say(FXROW[ui.fxrow].name, 0, ANN_NOW); break;
     case V_EDIT: ui.erow = (uint8_t)clamp_i(ui.erow + e, 0, NER - 1); ann_say(ER_N[ui.erow], 0, ANN_NOW); break;
-    case V_LIB: ui.lrow = (uint8_t)clamp_i(ui.lrow + e, 0, G_ENSEMBLES - 1); ann_say(G_ENSEMBLE[ui.lrow].name, 0, ANN_NOW); break;
+    case V_LIB: {
+        char n[24];
+        ui.lrow = (uint8_t)clamp_i(ui.lrow + e, 0, NLIB - 1);
+        lib_name(ui.lrow, n);
+        ann_say(n, 0, ANN_NOW);
+        break;
+    }
     case V_SYSTEM: ui.row = (uint8_t)clamp_i(ui.row + e, 0, NROWS - 1); ann_say(ROW_N[ui.row], 0, ANN_NOW); break;
     default: break;
     }
@@ -678,7 +773,7 @@ static void knob_turn(int k, int e)
         return;
     }
     if (ui.view == V_SYSTEM) {
-        row_set(ui.row);
+        row_set(ui.row, e);
         return;
     }
     if (ui.view == V_EDIT) {
@@ -1167,6 +1262,8 @@ static void draw_home(void)
             q = put_s(put_s(q, " > "), G_ENSEMBLE[eng_pend_ens % G_ENSEMBLES].name);
         else if (eng_pend_mode >= 0)
             q = put_s(put_s(q, " > "), g_mode_name(t, eng_pend_mode));
+        else if (ui.mine)
+            q = put_i(put_s(q, ", MINE "), ui.mine);
         else
             q = put_s(put_s(q, ", "), G_ENSEMBLE[eng_w.p[P_ENS] % G_ENSEMBLES].name);
         text_c(120, 125, &FONT_XS, b, eng_pend_ens >= 0 || eng_pend_mode >= 0 ? C_AMB : C_GRAY);
@@ -1200,10 +1297,18 @@ static void draw_list_edit(void)
 }
 static void draw_list_lib(void)
 {
-    int r;
-    for (r = 0; r < G_ENSEMBLES; r++)
-        list_row(r, r == ui.lrow, G_ENSEMBLE[r].name, r == eng_w.p[P_ENS] ? "PLAYING" : r == eng_pend_ens ? "AT THE GONG" : "",
-                 C_AMB);
+    int top = list_top(ui.lrow, NLIB, ROWS_SHOWN), r;
+    for (r = top; r < NLIB && r < top + ROWS_SHOWN; r++) {
+        char n[24];
+        lib_name(r, n);
+        if (r < G_ENSEMBLES)
+            list_row(r - top, r == ui.lrow, n,
+                     r == eng_w.p[P_ENS] && !ui.mine ? "PLAYING" : r == eng_pend_ens ? "AT THE GONG" : "", C_AMB);
+        else
+            list_row(r - top, r == ui.lrow, n,
+                     ui.mine == r - G_ENSEMBLES + 1 ? "PLAYING" : mine_kept(r - G_ENSEMBLES) ? "KEPT" : "EMPTY: SAVE",
+                     C_AMB);
+    }
 }
 static void draw_list_sys(void)
 {
@@ -1391,8 +1496,11 @@ static void draw_knobs(void)
             cells(MACRO, 0, C_HI);
             put_s(put_i(put_s(put_s(a, eng_running ? (eng_ending ? "ENDING" : "PLAYING") : "STOPPED"),
                               eng_w.p[P_AUTO] ? "  CYCLE " : "  BY HAND "), engine_cycle_len()), LP[eng_loop_state % 5]);
-            put_sgn(put_s(b, "OCT "), ui.oct);
-            hint(a, ui.oct ? b : 0);
+            if (ui.sleep)                         /* SLEEP: the minutes left */
+                put_s(put_i(put_s(b, "SLEEP "), (sleep_left_ms() + 59999) / 60000), "M");
+            else
+                put_sgn(put_s(b, "OCT "), ui.oct);
+            hint(a, ui.oct || ui.sleep ? b : 0);
             break;
         }
         case V_SHAPE:
@@ -1410,8 +1518,16 @@ static void draw_knobs(void)
             break;
         case V_LIB:
             cv_text(6, 20, &FONT_XS, "PLAYING", C_GRAY);
-            cv_text(6, 34, &FONT_S, G_ENSEMBLE[eng_w.p[P_ENS] % G_ENSEMBLES].name, C_AMB);
-            hint("SEL: OPEN (AT THE GONG)", "PRESETS: THE NEXT");
+            if (ui.mine) {
+                char n[16];
+                put_i(put_s(n, "MINE "), ui.mine);
+                cv_text(6, 34, &FONT_S, n, C_AMB);
+            } else
+                cv_text(6, 34, &FONT_S, G_ENSEMBLE[eng_w.p[P_ENS] % G_ENSEMBLES].name, C_AMB);
+            if (ui.lrow >= G_ENSEMBLES)
+                hint("SEL: OPEN", "SAVE: KEEP THE WORK HERE");
+            else
+                hint("SEL: OPEN (AT THE GONG)", "PRESETS: THE NEXT");
             break;
         case V_SYSTEM:
             text_c(120, 30, &FONT_XS, "SELECT: ROW    KNOB OR SEL: CHANGE", C_DIM);
@@ -1504,7 +1620,9 @@ static void speak_where(void)                      /* WHERE: the screen, said wh
         q = put_s(put_s(put_s(q, ER_N[ui.erow]), " "), v);
         break;
     case V_LIB:
-        q = put_s(q, G_ENSEMBLE[ui.lrow].name);
+        lib_name(ui.lrow, q);
+        while (*q)
+            q++;
         break;
     case V_SYSTEM:
         row_text(ui.row, v);
@@ -1562,6 +1680,20 @@ void ui_frame(void)
     }
     scale_now();
     autosave();
+    if (ui.sleep) {                               /* SLEEP: the ending in its last minutes; then still */
+        int left = sleep_left_ms();
+        if (left <= 0) {
+            if (eng_running)
+                engine_run(0);
+            ui.sleep = 0;
+            say("SLEEP: STILL", 0);
+        } else if (left <= (int)SLEEP_LAST_MS && !ui.sleep_step) {
+            ui.sleep_step = 1;
+            if (eng_running && !eng_ending)
+                engine_end();
+            say("SLEEP: THE ENDING", 0);
+        }
+    }
     {
         uint32_t s = engine_bench(&bench);
         if (s)

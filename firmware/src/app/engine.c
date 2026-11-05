@@ -790,9 +790,10 @@ static void schedule(uint32_t n)
 }
 
 /* ------------------------------------------------------------ the hands --- */
-static bars_handle_t white_h[16];
-static uint16_t white_down;
+static bars_handle_t white_h[32];               /* the FM-1's white keys 0..15, MIDI's notes 16..31 */
+static uint32_t white_down;
 static int8_t white_last = -1;
+static uint8_t sustain;                          /* MIDI's pedal: no damping hand */
 static uint8_t bend[16][4];
 static void bend_apply(int k)
 {
@@ -800,31 +801,95 @@ static void bend_apply(int k)
     bars_bend(&bars, white_h[k], ombak_now * (float)b[1] * (1.0f / 42.0f), ((float)b[2] - 64.0f) * (1.0f / 63.0f),
               (float)b[3] * (1.0f / 80.0f), (float)b[0] * (1.5f / 127.0f));
 }
-static void white(int k, int down)
+/* a key (slot k) plays tone i: the gendèr at once, and the next core note */
+static void tone(int k, int i, float vel)
 {
-    int i;
-    if (k < 0 || k > 15)
-        return;
-    if (!down) {
-        white_down &= (uint16_t)~(1u << k);
-        return;
-    }
-    i = k + oct * sc.n;
     /* the damping hand: the note before is stopped as this one sounds, unless its key is still held (two hands) */
-    if (white_last >= 0 && !(white_down >> white_last & 1u))
+    if (white_last >= 0 && !sustain && !(white_down >> white_last & 1u))
         bars_damp(&bars, white_h[white_last], 4410u, 0.03f * fm_exp2f(x128(P_TG_DAMP) * 8.0f));
-    white_h[k] = play(IN_GENDER, PART_GENDER, pitch(i), 0.9f * lvl(P_L_GENDER), 0.0f, 0, 0);
-    bend[k][0] = 0;
-    bend[k][1] = 42;
-    bend[k][2] = 64;
-    bend[k][3] = 80;
-    white_down |= (uint16_t)(1u << k);
+    white_h[k] = play(IN_GENDER, PART_GENDER, pitch(i), 0.9f * vel * lvl(P_L_GENDER), 0.0f, 0, 0);
+    if (k < 16) {
+        bend[k][0] = 0;
+        bend[k][1] = 42;
+        bend[k][2] = 64;
+        bend[k][3] = 80;
+    }
+    white_down |= 1u << k;
     white_last = (int8_t)k;
     if (eng_loop_state != LS_PLAY) {
         if (eng_running)
             core_n = (int16_t)i;
         else
             core_c = eng_core = (int16_t)i;
+    }
+}
+static void white(int k, int down)
+{
+    if (k < 0 || k > 15)
+        return;
+    if (!down)
+        white_down &= ~(1u << k);
+    else
+        tone(k, k + oct * sc.n, 1.0f);
+}
+
+/* MIDI in, on SYSTEM's channel: a white key (any octave: middle C the first tone, each white key the next tone)
+ * plays as the FM-1's do, its velocity the stroke's; a black key strikes a gong (C# the gong, D# the lanang, F#
+ * the kempur, G# the kemong, A# the kajar); the pedal holds every note (no damping hand); CC 20..23 HOME's
+ * OMBAK, DENSITY, SPACE, BREATH (and CC 1 DENSITY), CC 24 the tempo; a program change the gamelan at the next
+ * gong; Start and Stop the cycle (any channel). */
+static void run(int on);
+static void midi_in(uint32_t s, uint32_t d1, uint32_t d2)
+{
+    static const int8_t WHITE_OF[12] = {0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6};
+    static const int8_t GONG_OF[12] = {-1, G_GONG, -1, G_LANANG, -1, -1, G_KEMPUR, -1, G_KEMONG, -1, G_KAJAR, -1};
+    if (s == 0xFA || s == 0xFB) {
+        run(1);
+        return;
+    }
+    if (s == 0xFC) {
+        run(0);
+        return;
+    }
+    if (!midi_ch || s < 0x80 || s >= 0xF0 || (s & 15u) + 1u != midi_ch)
+        return;
+    d1 &= 0x7Fu;
+    d2 &= 0x7Fu;
+    if ((s & 0xF0u) == 0x90u && !d2)
+        s = 0x80u;                               /* a note on at 0 is a note off */
+    switch (s & 0xF0u) {
+    case 0x90: {
+        int pc = (int)(d1 % 12u), o = (int)(d1 / 12u) - 5;
+        if (GONG_OF[pc] >= 0)
+            gong(GONG_OF[pc], 0, 0.4f + 0.6f * (float)d2 / 127.0f);
+        else
+            tone(16 + (int)(d1 & 15u), o * 7 + WHITE_OF[pc], 0.3f + 0.7f * (float)d2 / 127.0f);
+        break;
+    }
+    case 0x80:
+        white_down &= ~(1u << (16u + (d1 & 15u)));
+        break;
+    case 0xB0:
+        switch (d1) {
+        case 1: case 21: eng_w.p[P_DENSITY] = (uint8_t)d2; break;
+        case 20: eng_w.p[P_OMBAK] = (uint8_t)d2; break;
+        case 22: eng_w.p[P_SPACE] = (uint8_t)d2; break;
+        case 23: eng_w.p[P_BREATH] = (uint8_t)d2; break;
+        case 24: eng_w.p[P_TEMPO] = (uint8_t)d2; break;
+        case 64: sustain = d2 >= 64; break;
+        case 120: case 123:                      /* all sound / notes off: the hands lift and damp */
+            sustain = 0;
+            white_down = 0;
+            for (s = 0; s < 32u; s++)
+                bars_damp(&bars, white_h[s], 0u, 0.03f);
+            break;
+        default: break;
+        }
+        break;
+    case 0xC0:
+        eng_pend_ens = (int8_t)(d1 % G_ENSEMBLES == eng_w.p[P_ENS] && eng_running ? -1 : (int)(d1 % G_ENSEMBLES));
+        break;
+    default: break;
     }
 }
 
@@ -919,8 +984,8 @@ static void drain(void)
         }
     }
     cq_r = r;
-    while (guard-- && plat_midi_in(&pkt))        /* MIDI: not yet (the queue is drained) */
-        ;
+    while (guard-- && plat_midi_in(&pkt))
+        midi_in(pkt >> 8 & 0xFFu, pkt >> 16 & 0xFFu, pkt >> 24 & 0xFFu);
 }
 
 /* ------------------------------------------------------------------ output --- */

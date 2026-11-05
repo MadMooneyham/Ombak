@@ -1,0 +1,53 @@
+# MINE: the work kept in a library slot with SAVE, opened with SEL (after a reboot too); the library scrolls to
+# it. A/B on SHAPE: B starts as A, is shaped apart, SEL goes back and forth
+listen
+wait 300
+turn K2 -20
+wait 100
+expect p9 24
+tap LFO
+wait 100
+turn SELECT 8
+wait 100
+said MINE 2
+shot library.png
+tap SAVE
+wait 300
+said KEPT IN MINE 2
+expect store_writes >0
+turn SELECT -8
+tap SEL
+wait 200
+expect p9 76
+turn SELECT 8
+tap SEL
+wait 200
+expect p9 24
+reboot
+wait 300
+tap LFO
+turn SELECT 7
+tap SEL
+wait 200
+said EMPTY
+turn SELECT 1
+tap SEL
+wait 200
+expect p9 24
+# A/B
+tap ENV
+wait 100
+tap SEL
+wait 100
+said B: SEL BACK TO A
+tap HOME
+turn K2 30
+wait 100
+expect p9 84
+tap ENV
+tap SEL
+wait 100
+expect p9 24
+tap SEL
+wait 100
+expect p9 84
