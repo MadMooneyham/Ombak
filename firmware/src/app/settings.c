@@ -16,7 +16,7 @@ void settings_defaults(void)
     cfg.magic = SET_MAGIC;
     cfg.format = SET_FORMAT;
     cfg.midi_ch = 1;
-    cfg.autoplay = 0;                            /* (Ombak waits for you: SEQ starts the cycle) */
+    cfg.autoplay = 1;                            /* (1.3: it plays from the start, the ensemble leading until you do) */
     cfg.home = 0;
     cfg.clock_out = 1;
     cfg.clock_in = 1;
@@ -38,6 +38,7 @@ int settings_load(void)
     s.clock_in &= 1u;
     s.notes_out &= 1u;
     s.cc_out &= 1u;
+    s.midi_mode &= 1u;
     cfg = s;
     return 0;
 }
@@ -48,6 +49,7 @@ void settings_apply(void)
 {
     engine_midi_ch(cfg.midi_ch);
     engine_midi_opts(cfg.clock_out, cfg.clock_in, cfg.notes_out, cfg.cc_out);
+    engine_midi_mode(cfg.midi_mode);
     engine_out_loud(cfg.out_loud);
     engine_usb_full(cfg.usb_full);
 }
@@ -58,7 +60,7 @@ static void work_sane(work_t *w)
     static const uint8_t MAX_OF[][2] = {{P_ENS, G_ENSEMBLES - 1}, {P_TUNING, G_TUNINGS - 1}, {P_MODE, 3}, {P_CYCLE, 3},
                                         {P_AUTO, 1}, {P_CORE_G, 1}, {P_KOT_G, 1}, {P_PARTS, 127}, {P_K_SUB, 4},
                                         {P_K_REG, 2}, {P_R_RATE, 1}, {P_R_REG, 2}, {P_O_REG, 2}, {P_E_AFTER, 1},
-                                        {P_FORM, G_FORMS - 1}, {P_K_STYLE, G_STYLES - 1}, {P_S_REG, 2}, {P_IRON, 1}};
+                                        {P_FORM, G_FORMS - 1}, {P_K_STYLE, G_STYLES - 1}, {P_S_REG, 2}, {P_IRON, 1}, {P_SELF, 1}};
     int i, g;
     for (i = 0; i < NP; i++)
         w->p[i] &= 0x7Fu;
@@ -83,7 +85,7 @@ static void work_sane(work_t *w)
  * params it did not have as made. */
 static int work_np(uint32_t format)
 {
-    return format == 1u ? NP_V1 : format == 2u ? NP_V2 : format == 3u ? NP_V3 : format == WORK_FORMAT ? NP : -1;
+    return format == 1u ? NP_V1 : format == 2u ? NP_V2 : format == 3u ? NP_V3 : format == 4u ? NP_V4 : format == WORK_FORMAT ? NP : -1;
 }
 static uint32_t work_size(int np) { return (8u + (uint32_t)np + 2u + LOOP_MAX + 3u) & ~3u; }
 _Static_assert(((8u + NP + 2u + LOOP_MAX + 3u) & ~3u) == sizeof(work_t), "the work's layout");

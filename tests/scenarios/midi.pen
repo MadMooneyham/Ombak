@@ -1,5 +1,7 @@
 # MIDI in on channel 1: Start runs the cycle, white keys lead the core (middle C the first tone), black keys
 # strike the gongs, CCs move HOME's knobs and the tempo, a program change brings a gamelan at the gong, Stop
+# (the ensemble does not take the lead here: the core is what MIDI gives it)
+set self 0
 wait 300
 midi FA 00 00
 wait 300

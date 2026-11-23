@@ -66,7 +66,7 @@ typedef struct {
     int16_t thr_sent[TH_N];
     uint8_t thr_kept, thr_back;
     int8_t last_pend_mode, last_pend_ens;
-    uint8_t last_loop;
+    uint8_t last_loop, last_self;
     uint8_t rs_ask;
     uint32_t rs_until;
     uint8_t mine;                          /* the MINE slot opened or kept (1..4), 0 none */
@@ -446,9 +446,9 @@ static void gamelan_go(int e)                     /* PRESETS, LIBRARY's SEL: a g
 }
 
 /* GAMELAN (EDIT): the rows */
-enum { ER_TUNING, ER_MODE, ER_FORM, ER_CYCLE, ER_GONGS, ER_METAL, ER_CORE, ER_KOT, ER_STYLE, ER_REY, ER_ORN, ER_KEN,
+enum { ER_TUNING, ER_MODE, ER_FORM, ER_CYCLE, ER_GONGS, ER_MELODY, ER_METAL, ER_CORE, ER_KOT, ER_STYLE, ER_REY, ER_ORN, ER_KEN,
        ER_CENG, ER_SUL, NER };
-static const char *const ER_N[NER] = {"TUNING", "MODE", "FORM", "CYCLE", "THE GONGS", "KEYS", "CORE ON", "KOTEKAN ON",
+static const char *const ER_N[NER] = {"TUNING", "MODE", "FORM", "CYCLE", "THE GONGS", "THE MELODY", "KEYS", "CORE ON", "KOTEKAN ON",
                                       "KOTEKAN", "REYONG", "ORNAMENTS", "KENDANG", "CENG-CENG", "SULING"};
 static const uint8_t ER_BIT[NER] = {[ER_REY] = PB_REY, [ER_ORN] = PB_ORN, [ER_KEN] = PB_KEN, [ER_CENG] = PB_CENG,
                                     [ER_SUL] = PB_SUL};
@@ -461,6 +461,7 @@ static void er_text(int r, char *b)
     case ER_FORM: put_s(b, G_FORM[p[P_FORM] % G_FORMS].name); break;
     case ER_CYCLE: put_s(put_i(b, engine_cycle_len()), " BEATS"); break;
     case ER_GONGS: put_s(b, p[P_AUTO] ? "THE CYCLE" : "BY HAND"); break;
+    case ER_MELODY: put_s(b, p[P_SELF] ? "IT LEADS WHEN YOU REST" : "YOURS ALONE"); break;
     case ER_METAL: put_s(b, p[P_IRON] ? "IRON (SELONDING)" : "BRONZE"); break;
     case ER_CORE: put_s(b, p[P_CORE_G] ? "GENDER" : "JUBLAG"); break;
     case ER_KOT: put_s(b, p[P_KOT_G] ? "GENDER" : "GANGSA"); break;
@@ -487,6 +488,7 @@ static void er_turn(int r, int e)
         break;
     case ER_STYLE: p[P_K_STYLE] = (uint8_t)wrap_i(p[P_K_STYLE] + d, G_STYLES); break;
     case ER_GONGS: p[P_AUTO] ^= 1u; break;
+    case ER_MELODY: p[P_SELF] ^= 1u; break;
     case ER_METAL: p[P_IRON] ^= 1u; break;
     case ER_CORE: p[P_CORE_G] ^= 1u; break;
     case ER_KOT: p[P_KOT_G] ^= 1u; break;
@@ -498,9 +500,9 @@ static void er_turn(int r, int e)
 }
 
 /* SYSTEM */
-enum { R_HOME, R_SLEEP, R_AUTOPLAY, R_MIDI, R_CLKIN, R_CLKOUT, R_NOTESOUT, R_CCOUT, R_OUTLOUD, R_USBFULL, R_CORES,
+enum { R_HOME, R_SLEEP, R_AUTOPLAY, R_MIDI, R_MIDIMODE, R_CLKIN, R_CLKOUT, R_NOTESOUT, R_CCOUT, R_OUTLOUD, R_USBFULL, R_CORES,
        R_RESET, R_ABOUT, NROWS };
-static const char *const ROW_N[NROWS] = {"HOME", "SLEEP", "PLAY AT POWER-ON", "MIDI CHANNEL", "FOLLOW CLOCK IN",
+static const char *const ROW_N[NROWS] = {"HOME", "SLEEP", "PLAY AT POWER-ON", "MIDI CHANNEL", "MIDI MODE", "FOLLOW CLOCK IN",
                                          "MIDI CLOCK OUT", "MIDI NOTES OUT", "MIDI CC OUT", "OUTPUT LEVEL", "USB AUDIO",
                                          "2ND CORE", "RESET SOUND", "ABOUT"};
 static void row_text(int r, char *b)
@@ -509,6 +511,7 @@ static void row_text(int r, char *b)
     case R_HOME: put_s(b, cfg.home ? "THE GONG" : "THE ONGKARA"); break;
     case R_AUTOPLAY: put_s(b, cfg.autoplay ? "ON" : "OFF"); break;
     case R_MIDI: if (cfg.midi_ch) put_i(b, cfg.midi_ch); else put_s(b, "OFF"); break;
+    case R_MIDIMODE: put_s(b, cfg.midi_mode ? "SOUND MODULE" : "ENSEMBLE"); break;
     case R_CLKIN: put_s(b, !cfg.clock_in ? "OFF" : engine_following() ? "FOLLOWING" : "ON"); break;
     case R_CLKOUT: put_s(b, cfg.clock_out ? "ON" : "OFF"); break;
     case R_NOTESOUT: put_s(b, cfg.notes_out ? "ON" : "OFF"); break;
@@ -533,6 +536,7 @@ static void row_set(int r, int e)                 /* SEL (e 1) or a knob turned 
     case R_HOME: cfg.home ^= 1u; break;
     case R_AUTOPLAY: cfg.autoplay ^= 1u; break;
     case R_MIDI: cfg.midi_ch = (uint8_t)wrap_i(cfg.midi_ch + (e < 0 ? -1 : 1), 17); break;   /* 0 off, 1 .. 16 */
+    case R_MIDIMODE: cfg.midi_mode ^= 1u; break;
     case R_CLKIN: cfg.clock_in ^= 1u; break;
     case R_CLKOUT: cfg.clock_out ^= 1u; break;
     case R_NOTESOUT: cfg.notes_out ^= 1u; break;
@@ -1516,8 +1520,15 @@ static void draw_knobs(void)
         case V_HOME: {
             static const char *const LP[5] = {"", "  LOOP WAITS", "  LOOP REC", "  LOOP", "  LOOP HELD"};
             cells(MACRO, 0, C_HI);
-            put_s(put_i(put_s(put_s(a, eng_running ? (eng_ending ? "ENDING" : "PLAYING") : "STOPPED"),
-                              eng_w.p[P_AUTO] ? "  CYCLE " : "  BY HAND "), engine_cycle_len()), LP[eng_loop_state % 5]);
+            /* (1.3: in plain words, who leads and what a key does) */
+            if (!eng_running)
+                put_s(a, "STOPPED: SEQ PLAYS");
+            else if (eng_ending)
+                put_s(a, "ENDING ON THE GONG");
+            else if (eng_loop_state == LS_PLAY || eng_loop_state == LS_ARM || eng_loop_state == LS_REC)
+                put_s(put_s(a, "PLAYING"), LP[eng_loop_state % 5]);
+            else
+                put_s(a, eng_self ? "IT LEADS: PLAY A KEY TO LEAD" : "YOU LEAD: REST, IT TAKES OVER");
             if (ui.sleep)                         /* SLEEP: the minutes left */
                 put_s(put_i(put_s(b, "SLEEP "), (sleep_left_ms() + 59999) / 60000), "M");
             else
@@ -1698,6 +1709,9 @@ void ui_frame(void)
         ui.last_loop = eng_loop_state;
         changed();
     }
+    if (eng_running && eng_self != ui.last_self && eng_self)
+        say("THE ENSEMBLE LEADS", 0);           /* (when it takes the melody back; your key says your note) */
+    ui.last_self = eng_running ? eng_self : 0;
     scale_now();
     autosave();
     if (ui.sleep) {                               /* SLEEP: the ending in its last minutes; then still */

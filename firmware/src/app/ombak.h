@@ -26,7 +26,8 @@ typedef struct {
     uint8_t clock_in;                    /* 1: an incoming MIDI clock leads the tempo */
     uint8_t notes_out;                   /* 1: the FM-1's keys go out as MIDI notes */
     uint8_t cc_out;                      /* 1: HOME's knobs, the tempo, the gamelan go out as CCs and program changes */
-    uint8_t rsv[22];
+    uint8_t midi_mode;                   /* 0: the ensemble (notes lead the core); 1: a sound module, a channel each */
+    uint8_t rsv[21];
 } settings_t;
 
 extern settings_t cfg;

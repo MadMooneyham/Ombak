@@ -28,7 +28,7 @@ expect stops_out 1
 # the keys out
 tap GLO
 wait 100
-turn SELECT 6
+turn SELECT 7
 tap SEL
 wait 100
 tap HOME

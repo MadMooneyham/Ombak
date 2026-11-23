@@ -341,6 +341,8 @@ static void wav_close(void)
 }
 
 /* --------------------------------------------------------- the device --- */
+static unsigned long long cores_seen;              /* the core notes heard (bit: note + 32) */
+static uint32_t last_beat_at, gong_lands, gong_lands_ok;   /* the ensemble leading: its gongs, landing on tone 1 */
 static double audio_due_ms, clockin_next_ms, clockin_end_ms, clockin_period_ms;
 static uint32_t ui_due;
 static int sim_listen;
@@ -378,6 +380,15 @@ static void run_ms(uint32_t ms)
             double dt;
             engine_render(blk, 256);
             engine_volume(blk, 256);
+            if (eng_running && eng_core != -32768 && eng_core > -32 && eng_core < 32)   /* the melody, watched */
+                cores_seen |= 1ull << (eng_core + 32);
+            if (eng_running && eng_beat_at != last_beat_at) {
+                last_beat_at = eng_beat_at;
+                if (eng_self && eng_beat_pos == 0 && eng_core != -32768 && usc.n) {
+                    gong_lands++;
+                    gong_lands_ok += ((eng_core % usc.n) + usc.n) % usc.n == 0;
+                }
+            }
 #ifdef OMB_WEB
             web_audio(blk, 256);                         /* the browser build: to the AudioWorklet */
 #endif
@@ -470,6 +481,18 @@ static int expect(const char *what, const char *val)
         got = eng_w.p[P_L_KEN];
     else if (!strcmp(what, "parts"))
         got = eng_w.p[P_PARTS];
+    else if (!strcmp(what, "cores_seen")) {         /* how many different core notes since "corereset" */
+        unsigned long long m = cores_seen;
+        got = 0;
+        while (m) { got += (int)(m & 1ull); m >>= 1; }
+    } else if (!strcmp(what, "gong_lands"))
+        got = (int)gong_lands;
+    else if (!strcmp(what, "gong_lands_off"))          /* gongs where the ensemble's melody missed its first tone */
+        got = (int)(gong_lands - gong_lands_ok);
+    else if (!strcmp(what, "suling"))
+        got = engine_suling_on();
+    else if (!strcmp(what, "self"))                 /* 1: the ensemble leads the melody now */
+        got = eng_self;
     else if (!strcmp(what, "iron"))
         got = eng_w.p[P_IRON];
     else if (!strcmp(what, "following"))
@@ -580,6 +603,16 @@ int main(int argc, char **argv)
     snprintf(out, sizeof out, "%s/midi_out.txt", dir);
     midi_log = fopen(out, "w");
     plat_cpu2_set(1);
+    /* the scripts start stopped, on SEMAR PEGULINGAN, as Ombak was made until 1.3 (they were written so); as made
+     * now, it plays GILAK at power-on, the ensemble leading: "factory" boots that, with nothing saved */
+    settings_defaults();
+    cfg.autoplay = 0;
+    settings_save();
+    engine_init();
+    engine_work_defaults();
+    engine_ensemble(1);
+    work_save();
+    store_writes = 0;
     boot();
     while (fgets(line, sizeof line, sc)) {
         char cmd[32] = {0}, a[256] = {0}, b[64] = {0}, c[64] = {0};
@@ -631,6 +664,8 @@ int main(int argc, char **argv)
                 engine_form(atoi(b));
             else if (!strcmp(a, "style"))
                 eng_w.p[P_K_STYLE] = (uint8_t)atoi(b);
+            else if (!strcmp(a, "self"))           /* THE MELODY: 1 the ensemble leads when you do not */
+                eng_w.p[P_SELF] = (uint8_t)atoi(b);
             else
                 eng_w.p[atoi(a) % NP] = (uint8_t)atoi(b);
         } else if (!strcmp(cmd, "oldwork")) {         /* oldwork: the work playing saved as 1.0 (format 2) saved it,
@@ -699,6 +734,16 @@ int main(int argc, char **argv)
         } else if (!strcmp(cmd, "autoplay")) {        /* autoplay 0|1: PLAY AT POWER-ON saved, then power on again */
             cfg.autoplay = (uint8_t)atoi(a);
             settings_save();
+            store_writes = 0;
+            held_btn = held_keys = 0;
+            boot();
+        } else if (!strcmp(cmd, "corereset")) {
+            cores_seen = 0;
+            gong_lands = gong_lands_ok = 0;
+        } else if (!strcmp(cmd, "factory")) {         /* factory: nothing saved, then power on: Ombak as made */
+            int o;
+            for (o = 0; o < NOBJ; o++)
+                store_len[o] = -1;
             store_writes = 0;
             held_btn = held_keys = 0;
             boot();

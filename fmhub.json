@@ -1,7 +1,9 @@
 {
-  "what": "A gamelan-inspired ensemble. Lead the core melody on the white keys and the ensemble answers: interlocking kotekan, reyong, kendang and gongs in measured Balinese and Javanese tunings, every note shimmering with ombak. Play the traditional forms, or slow it right down for meditation.",
+  "what": "A shimmering bronze ensemble from Bali and Java that plays itself the moment you switch on. Touch a white key and gongs, drums and interlocking bells follow your melody; rest and it carries on. Eleven measured tunings, lively to meditative, and a sound-module mode for your DAW.",
   "author": "Lunar Eclipse Forge",
-  "kinds": ["other"],
+  "kinds": [
+    "synth"
+  ],
   "play": "https://madmooneyham.github.io/Ombak/emu/",
   "cheat": "https://madmooneyham.github.io/Ombak/cheatsheet/",
   "image": "assets/card.png",

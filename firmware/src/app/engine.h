@@ -61,11 +61,14 @@ enum {
     P_L_SUL, P_S_BREATH, P_S_VIB, P_S_REG, P_S_GLIDE,
     /* (format 4) IRON: 1, every part on iron keys, the gongs' parts too (the selonding) */
     P_IRON,
+    /* (format 5) THE MELODY: 1, the ensemble leads when you have not played for a cycle (and from the start) */
+    P_SELF,
     NP
 };
 #define NP_V1 P_FORM                     /* the params a format 1 work has */
 #define NP_V2 P_L_KEN                    /* a format 2's */
 #define NP_V3 P_IRON                     /* a format 3's */
+#define NP_V4 P_SELF                     /* a format 4's */
 enum { G_GONG, G_LANANG, G_KEMPUR, G_KEMONG, G_KAJAR, G_N };
 enum { GF_LEVEL, GF_TONE, GF_HUM, GF_RING, GF_PLACES, GF_N };
 #define P_GONG(g, f) (P_GONGS + (g) * GF_N + (f))
@@ -73,7 +76,7 @@ enum { PART_GENDER, PART_CORE, PART_KOT, PART_GONGS, NPARTS };
 enum { PB_CORE = 1, PB_KOT = 2, PB_REY = 4, PB_ORN = 8, PB_KEN = 16, PB_CENG = 32, PB_SUL = 64 };
 
 #define WORK_MAGIC 0x3157424Fu           /* "OBW1" */
-#define WORK_FORMAT 4u
+#define WORK_FORMAT 5u
 #define LOOP_MAX 16
 typedef struct {
     uint32_t magic, format;
@@ -91,6 +94,7 @@ void engine_cc_out(int cc, int v);       /* MIDI CC OUT: a control change (128 +
 
 /* -------------------------------------------------------------- what it is doing --- */
 extern volatile uint8_t eng_running, eng_ending, eng_pos, eng_loop_state;
+extern volatile uint8_t eng_self;                     /* 1: the ensemble leads the melody now */
 enum { LS_OFF, LS_ARM, LS_REC, LS_PLAY, LS_HELD };
 extern volatile int8_t eng_pend_mode, eng_pend_ens;   /* arriving at the next gong (-1: none) */
 extern volatile int16_t eng_core, eng_next;           /* the core note now, the next (-32768: none) */
@@ -130,6 +134,8 @@ void engine_out_loud(int on);
 void engine_usb_full(int on);
 void engine_midi_ch(int ch);
 void engine_midi_opts(int clock_out, int clock_in, int notes_out, int cc_out);
+void engine_midi_mode(int module);
+int engine_suling_on(void);              /* 1: the suling is sounding */       /* 1: a sound module: each instrument on its own channel (engine.c) */
 int engine_following(void);              /* 1: an incoming MIDI clock leads the tempo now */
 uint32_t engine_quiet_ms(void);
 

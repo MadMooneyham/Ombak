@@ -1,0 +1,52 @@
+# 1.3: MIDI MODE: SOUND MODULE. Each instrument on its own channel from MIDI CHANNEL (1) up, the cycle stopped:
+# a gendèr note sounds and its note off damps it; the gongs, the drums, the suling (held while its note is) and
+# the selonding's iron keys; the ensemble's mode again
+listen
+wait 300
+tap GLO
+wait 100
+turn SELECT 4
+tap SEL
+wait 100
+said MIDI MODE
+tap HOME
+expect playing 0
+midi 90 3C 64
+wait 200
+expect voices >0
+midi 80 3C 00
+wait 1500
+expect voices 0
+midi 95 3C 70
+wait 100
+expect gong_ms <300
+midi 96 3C 70
+midi 96 41 70
+midi 96 43 70
+wait 100
+expect voices >2
+midi 97 40 60
+wait 1500
+expect suling 1
+midi 97 43 60
+wait 800
+expect suling 1
+midi 87 43 00
+wait 10000
+expect suling 0
+midi 98 30 70
+midi 98 48 70
+wait 100
+expect clips 0
+expect playing 0
+# the ensemble's mode: a note on channel 1 leads the core again
+tap GLO
+wait 100
+tap SEL
+wait 100
+said MIDI MODE
+tap HOME
+tap SEQ
+midi 90 40 64
+wait 3000
+expect core 2

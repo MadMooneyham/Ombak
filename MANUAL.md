@@ -1,10 +1,11 @@
 # Ombak manual
 
-Ombak 1.2 for the M-VAVE FM-1, by Lunar Eclipse Forge.
+Ombak 1.3 for the M-VAVE FM-1, by Lunar Eclipse Forge.
 
 Ombak is an instrument inspired by the gamelan of Bali and Java. It is not a gamelan, and it does not
 pretend to be one. It plays measured tunings from real ensembles, and it builds its parts the way a gamelan
-does. You lead the melody, and the ensemble answers.
+does. It plays itself from the moment you switch it on; touch a white key and you lead the melody, and the
+ensemble answers. Rest, and it carries on by itself.
 
 - **The core** is the melody you lead. Each white key you play sounds your gendèr at once and becomes the
   next core note. The core instruments strike it on the next beat.
@@ -39,9 +40,12 @@ Contents:
 
 ## 1. Starting
 
-Switch the FM-1 on. Ombak shows the bronze gong, then HOME, stopped. Nothing plays by itself. The white keys
-already play your gendèr, and the black keys strike the gongs, so you can find the tuning before anything
-moves. To start playing at power-on instead, turn **PLAY AT POWER-ON** on in SYSTEM.
+Switch the FM-1 on. Ombak shows the bronze gong, then HOME, and the gong opens the cycle: GILAK, the ensemble
+leading its own melody. Play a white key whenever you like, and you lead; rest for a cycle, and it leads again.
+To start silent instead, turn **PLAY AT POWER-ON** off in SYSTEM.
+
+- **The strip at the bottom of HOME** says who leads: IT LEADS (play a key to lead) or YOU LEAD (rest, and it
+  takes over).
 
 - **SEQ** starts the cycle. When the cycle keeps the gongs, the gong opens it, and a light sets off round the
   rim. Press SEQ again to stop: the cycle stops and everything rings out.
@@ -111,8 +115,15 @@ the next gong, as a real ensemble would change. Stopped, it changes at once. **S
 ## 4. Leading, cueing and ending
 
 **Leading.** Play a white key while the cycle runs, and the core lands on it at the next beat. The kotekan,
-reyong and ornaments spend that beat turning toward it. Play nothing, and the parts keep circling the note
-they have. A melody is a few notes, one a beat or one every few beats. You don't have to keep playing.
+reyong and ornaments spend that beat turning toward it. A melody is a few notes, one a beat or one every few
+beats. You don't have to keep playing.
+
+**The ensemble leads when you rest.** From the start, and whenever you have not played a white key for a whole
+cycle, the ensemble makes its own core melody, a beat ahead so the parts can turn toward it as they do toward
+yours. It moves as a core melody does: mostly by step, sometimes by a skip, now and then holding a note, and it
+heads for the cycle's places, landing on the first tone at every gong and on the third at the half. Your next
+key takes the lead at once. GAMELAN's **THE MELODY** row makes the melody yours alone, so the core holds your
+last note until you play another. A loop playing leads instead.
 
 **Taking the gongs.** **ARP** switches the gongs between the cycle and your hand (lit: the cycle keeps them).
 By hand, black 1-5 are yours alone, and the beat runs on either way.
@@ -181,7 +192,7 @@ The loop is saved with everything else.
 | Gamelan | What it is |
 | --- | --- |
 | GENDER WAYANG | The gendèr quartet of the shadow play: slendro (Peliatan), gendèr for the core and the kotekan, the gongs by hand (it has none) |
-| SEMAR PEGULINGAN | The seven-tone court gamelan (saih pitu, Tampak Gangsul): gangsa kotekan, gendèr ornaments (as made, at power-on) |
+| SEMAR PEGULINGAN | The seven-tone court gamelan (saih pitu, Tampak Gangsul): gangsa kotekan, gendèr ornaments |
 | ANGKLUNG | The four-tone slendro (Mas), with reyong and a norot kotekan |
 | STILL | Ombak's own, for meditation, not a tradition: the gendèr and the gongs, a core note every ten seconds, long rings, no kajar, a deep space |
 | GONG GEDE | Five-tone pelog (Peliatan), 32 beats, slow and breathing, with kendang and ceng-ceng |
@@ -202,6 +213,7 @@ it.
 | FORM | The gong form: FREE, GILAK, LANCARAN, KETAWANG or LADRANG |
 | CYCLE | FREE's length: 4, 8, 16 or 32 beats. Turning it from another form goes back to FREE |
 | THE GONGS | The cycle keeps them, or your hand (ARP too) |
+| THE MELODY | IT LEADS WHEN YOU REST (as made), or YOURS ALONE |
 | KEYS | BRONZE, or IRON: every part on the selonding's iron keys, the gongs' part on its large keys |
 | CORE ON | Jublag and jegogan, or gendèr |
 | KOTEKAN ON | Gangsa, or gendèr |
@@ -313,8 +325,9 @@ kotekan style stay as they are. A/B lasts only this session.
 | --- | --- |
 | HOME | THE ONGKARA, or THE GONG |
 | SLEEP | Off, or 20, 40, 60 or 90 minutes (below) |
-| PLAY AT POWER-ON | Starts the cycle when you switch on |
+| PLAY AT POWER-ON | Starts the cycle when you switch on (on as made) |
 | MIDI CHANNEL | MIDI in and out: 1-16, or off (section 11) |
+| MIDI MODE | ENSEMBLE (notes lead the core), or SOUND MODULE (each instrument on its own channel; section 11) |
 | FOLLOW CLOCK IN | An incoming MIDI clock leads the tempo (FOLLOWING while it does) |
 | MIDI CLOCK OUT | Sends MIDI clock, Start and Stop while the cycle runs |
 | MIDI NOTES OUT | Sends the keys you play on the FM-1 as notes |
@@ -389,6 +402,25 @@ channel.
 MIDI in reads them: the white keys as the tones counted from middle C, and the gongs struck by hand as C#, D#,
 F#, G# and A# above it. The cycle's own notes are not sent.
 
+**The sound module** (SYSTEM: MIDI MODE: SOUND MODULE). Ombak's instruments, each on its own channel from MIDI
+CHANNEL up, to play from a DAW or any sequencer; the cycle need not run. Velocity is the stroke, and a note off
+damps the note as a player's hand does (the sustain pedal, CC 64 on any of these channels, lets them ring).
+
+| Channel | Instrument | Notes |
+| --- | --- | --- |
+| +0 | Gendèr | The white keys are the tuning's tones, counted from middle C |
+| +1 | Gangsa | The same |
+| +2 | Jublag | The same |
+| +3 | Jegogan | The same |
+| +4 | Reyong | The same |
+| +5 | The gongs | C gong, D lanang, E kempur, F kemong, G kajar (or the black keys, as in the ensemble mode) |
+| +6 | The drums | C the wadon's open dag, D its soft dug, E the lanang's tut, F its slapped pak, G the ceng-ceng open, A closed |
+| +7 | The suling | One line: the newest note held, gliding, until its note off |
+| +8 | The selonding | Iron keys; below C3, its large keys |
+
+The ensemble's CCs, program changes, Start and Stop still work on MIDI CHANNEL. With MIDI CHANNEL at 1, the module
+takes channels 1 to 9.
+
 ## 12. Cheat sheet
 
 | Control | Does |
@@ -401,7 +433,7 @@ F#, G# and A# above it. The cycle's own notes are not sent.
 | SELECT (HOME) | The mode, at the next gong |
 | PRESETS | The gamelan, at the next gong |
 | ALGO | Tempo (SHAPE: the page's own; GAMELAN: change the row; holds: see section 5) |
-| SEQ | The cycle: start, stop |
+| SEQ | The cycle: start, stop (it plays at power-on, the ensemble leading) |
 | ARP | The gongs: the cycle, or your hand |
 | REC | Loop the core from the next cycle (again: cancel) |
 | PLAY | Hold the loop / bring it back; held: clear |

@@ -456,6 +456,27 @@ it); add the selonding, best effort on authenticity.
 Published by David as v1.2 (2026-11-05); the site serves it, with the emulator and the cheat sheet (built on
 GitHub with Emscripten). Next, in David's words: polish the interface as the performance workflows are found.
 
+## 1.3: it plays itself; a sound module; the first impression
+
+David (2026-11-23): Ombak has seen little use. The hub's catalog had it under "other" with 0 stars (Penumbra: synth,
+1); install counts are not published. The reading: it was silent until understood (stopped at power-on, waiting to
+be led), its card spoke gamelan words, and there was nothing to hear without installing. David: do all four of the
+suggestions, the audio recording his.
+
+- **The ensemble leads when you rest** (P_SELF, format 5; GAMELAN: THE MELODY): from the start and after a cycle
+  without a white key, self_step() makes the core a beat ahead (so next_core() can give the elaboration its target):
+  hold 16%, step 58%, skip 26%, leaning 62% toward the next structural place (the half: the third tone, or the
+  second of four; the gong: the first), heading straight there when the beats left demand it, landing on it; kept
+  within two octaves. A key takes the lead at once (tone() marks it); a loop playing leads instead. HOME's strip
+  says IT LEADS / YOU LEAD; the reader says THE ENSEMBLE LEADS when it takes the melody back.
+- **Play at power-on as made, on GILAK** (settings_defaults, engine_work_defaults). The simulator's scripts still
+  start stopped on SEMAR PEGULINGAN (the harness saves that before booting); "factory" boots Ombak as made.
+- **MIDI MODE: SOUND MODULE** (cfg.midi_mode): channels MIDI CHANNEL .. +8, one instrument each (module_note()),
+  note off damps (0.08 s), CC 64 on any lets them ring; the suling follows its channel's newest note.
+- **The card:** kind synth; plain words; HOME's new strip as the picture. README the same.
+- Tests: leads.pen (as made: playing, GILAK, the ensemble leading, many tones, every gong on the first tone, a key
+  taking over, back after a cycle, THE MELODY off), module.pen.
+
 ## When the firmware starts: what comes from Penumbra
 
 Penumbra (GPL-3.0-only, itself on Felucca and X0X) has a platform proven on the FM-1's JieLi AC791N.

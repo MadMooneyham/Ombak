@@ -18,6 +18,7 @@
 /* ---------------------------------------------------------------- state --- */
 work_t eng_w;
 volatile uint8_t eng_running, eng_ending, eng_pos, eng_loop_state;
+volatile uint8_t eng_self;
 volatile int8_t eng_pend_mode = -1, eng_pend_ens = -1;
 volatile int16_t eng_core = NONE, eng_next = NONE;
 volatile uint32_t eng_frames, eng_beat_at, eng_beat_len, eng_gong_at, eng_cycle_no;
@@ -88,6 +89,7 @@ static void defaults_init(void)
     DEF[P_K_STYLE] = KS_CIRCLE;
     DEF[P_L_KEN] = DEF[P_L_CENG] = DEF[P_L_SUL] = 100;
     DEF[P_S_REG] = 1;
+    DEF[P_SELF] = 1;
 }
 /* a form with the lanang in it brings it in (FREE leaves it to its PLACES: off as made) */
 void engine_form(int f)
@@ -132,7 +134,7 @@ void engine_work_defaults(void)
     eng_w.format = WORK_FORMAT;
     for (i = 0; i < NP; i++)
         eng_w.p[i] = DEF[i];
-    engine_ensemble(1);                          /* semar pegulingan */
+    engine_ensemble(5);                          /* gilak (1.3: lively from the first moment; it was semar pegulingan) */
     eng_w.loop_len = 0;
     eng_w.loop_kept = 0;
     for (i = 0; i < LOOP_MAX; i++)
@@ -656,11 +658,65 @@ static struct {
 static int16_t core_c = NONE, core_n = NONE;
 static int8_t oct;
 static uint8_t loop_i;
+
+/* THE ENSEMBLE LEADS (THE MELODY: 1): from the start, and whenever you have not played a white key for a whole
+ * cycle, the ensemble makes its own core melody, a beat at a time and a beat ahead (so the elaboration can turn
+ * toward it, as it does toward yours). It moves as a core melody does: mostly by step, sometimes by a skip, now and
+ * then holding, and it heads for the cycle's structural places, landing on the first tone at the gong and on the
+ * third (the second of four) at its half. A key you play takes the lead at once; stop, and a cycle later it is
+ * the ensemble's again. A loop playing leads instead. */
+static int16_t self_next = NONE;
+static uint32_t key_beat;
+static uint8_t key_ever;
+static int self_on(void)
+{
+    return eng_w.p[P_SELF] && !(eng_loop_state == LS_PLAY && eng_w.loop_len) && core_n == NONE &&
+           (!key_ever || cy.beat_no - key_beat >= (uint32_t)cycle_len());
+}
+static int self_step(int prev, int pos, int len)
+{
+    const int n = sc.n, half = len / 2, mid = n >= 5 ? 2 : 1;
+    int tpos, bt, tgt, d, step;
+    float r;
+    if (prev == NONE)
+        return n;                                /* (the first: the first tone, in the middle of the range) */
+    if (pos == 0 || pos == half)                 /* on the gong, or its half: land on the place's tone */
+        tpos = pos == 0 ? len : half;
+    else
+        tpos = pos < half ? half : len;          /* else: the next place ahead */
+    bt = pos == 0 ? 0 : tpos - pos;
+    tgt = (tpos == len ? 0 : mid);               /* the place's tone, in the octave nearest the melody */
+    tgt += n * (int)fm_floorf((float)(prev - tgt) / (float)n + 0.5f);
+    d = tgt - prev;
+    if (bt == 0)                                 /* on the place itself: land */
+        return tgt;
+    if (d * (d < 0 ? -1 : 1) >= bt)              /* (only so many beats left: head straight there) */
+        return prev + (d > 0 ? 1 : -1) * (d * (d < 0 ? -1 : 1) >= 2 * bt ? 2 : 1);
+    r = rnd01();
+    if (r < 0.16f)
+        return prev;                             /* a held note */
+    step = r < 0.74f ? 1 : 2;                    /* by step, or a skip */
+    if (rnd01() < (d == 0 ? 0.5f : 0.62f) ? d >= 0 : d < 0)
+        step = -step;                            /* (leaning toward the place ahead) */
+    else if (d == 0 && rnd01() < 0.5f)
+        step = -step;
+    step = prev + step;
+    if (step < 0 || step > 2 * n)                /* (kept in two octaves: turned back at the edges) */
+        step = 2 * prev - step;
+    return step;
+}
 static int next_core(void)
 {
     if (eng_loop_state == LS_PLAY && eng_w.loop_len)
         return eng_w.loop[loop_i % eng_w.loop_len] == -128 ? core_c : eng_w.loop[loop_i % eng_w.loop_len];
-    return core_n != NONE ? core_n : core_c;
+    if (core_n != NONE)
+        return core_n;
+    if (self_on()) {                             /* the ensemble's next, decided a beat ahead */
+        if (self_next == NONE)
+            self_next = (int16_t)self_step(core_c, (eng_pos + 1) % cycle_len(), cycle_len());
+        return self_next;
+    }
+    return core_c;
 }
 
 static void begin_beat(uint32_t off)
@@ -690,7 +746,14 @@ static void begin_beat(uint32_t off)
     } else if (core_n != NONE) {
         core_c = core_n;
         core_n = NONE;
+        self_next = NONE;
+    } else if (self_on()) {
+        if (self_next == NONE)
+            self_next = (int16_t)self_step(core_c, pos, len);
+        core_c = self_next;
+        self_next = NONE;
     }
+    eng_self = (uint8_t)self_on();
     if (eng_loop_state == LS_ARM && pos % (len < LOOP_MAX ? len : LOOP_MAX) == 0) {
         eng_loop_state = LS_REC;
         eng_w.loop_len = 0;
@@ -1009,6 +1072,10 @@ static void tone(int k, int i, float vel)
     if (white_last >= 0 && !sustain && !(white_down >> white_last & 1u))
         bars_damp(&bars, white_h[white_last], 4410u, 0.03f * fm_exp2f(x128(P_TG_DAMP) * 8.0f));
     white_h[k] = play(IN_GENDER, PART_GENDER, pitch(i), 0.9f * vel * lvl(P_L_GENDER), 0.0f, 0, 0);
+    key_ever = 1;                                /* (you lead: the ensemble's own next is forgotten) */
+    key_beat = cy.beat_no;
+    self_next = NONE;
+    eng_self = 0;
     if (k < 16) {
         bend[k][0] = 0;
         bend[k][1] = 42;
@@ -1058,6 +1125,71 @@ static void white(int k, int down)
  * the kempur, G# the kemong, A# the kajar); the pedal holds every note (no damping hand); CC 20..23 HOME's
  * OMBAK, DENSITY, SPACE, BREATH (and CC 1 DENSITY), CC 24 the tempo; a program change the gamelan at the next
  * gong; Start and Stop the cycle (any channel). */
+/* MIDI MODE: SOUND MODULE. Each instrument on its own channel, from SYSTEM's MIDI CHANNEL up, played straight
+ * from a DAW or a sequencer (the cycle need not run): +0 gendèr, +1 gangsa, +2 jublag, +3 jegogan, +4 reyong,
+ * +5 the gongs, +6 the drums, +7 the suling, +8 the selonding's iron keys. The pitched ones take the white keys as
+ * the tones from middle C, as everywhere in Ombak (the black keys are not theirs); velocity is the stroke, and a
+ * note off damps it as a player's hand does (the pedal, CC 64 on any of them, lets them ring). The gongs: C the
+ * gong, D the lanang, E the kempur, F the kemong, G the kajar (or the black keys, as in the ensemble mode). The
+ * drums: C the wadon's dag, D its dug, E the lanang's tut, F its pak, G the ceng-ceng open, A closed. The suling:
+ * one line, the newest note held. The ensemble's channel CCs, program changes and Start / Stop still apply */
+static uint8_t midi_module;
+void engine_midi_mode(int m) { midi_module = (uint8_t)(m != 0); }
+static bars_handle_t mod_h[9][32];
+static int16_t mod_sul = -32768;
+static uint8_t mod_sul_key = 0xFF;
+static void module_note(int ch, int on, int note, int vel)
+{
+    static const int8_t WHITE_OF[12] = {0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6};
+    static const int8_t GONG_W[12] = {G_GONG, G_GONG, G_LANANG, G_LANANG, G_KEMPUR, G_KEMONG, G_KEMPUR, G_KAJAR, G_KEMONG, -1,
+                                      G_KAJAR, -1};
+    static const uint8_t INST[5] = {IN_GENDER, IN_GANGSA, IN_JUBLAG, IN_JEGOGAN, IN_REYONG};
+    static const uint8_t PART[5] = {PART_GENDER, PART_KOT, PART_CORE, PART_CORE, PART_KOT};
+    static const float PAN[5] = {0.0f, -0.3f, -0.15f, 0.1f, 0.35f};
+    const int pc = note % 12, idx = (note / 12 - 5) * 7 + WHITE_OF[pc];
+    const float v = 0.3f + 0.7f * (float)vel / 127.0f;
+    bars_handle_t *h = &mod_h[ch][note & 31];
+    if (!on) {
+        if (ch == 7 && mod_sul_key == (uint8_t)note) {
+            mod_sul = -32768;
+            mod_sul_key = 0xFF;
+        } else if (ch != 5 && ch != 6 && !sustain) {
+            bars_damp(&bars, *h, 0u, 0.08f);
+        }
+        return;
+    }
+    if (ch == 5) {                               /* the gongs */
+        if (GONG_W[pc] >= 0)
+            gong(GONG_W[pc], 0, 0.4f + 0.6f * (float)vel / 127.0f);
+        return;
+    }
+    if (ch == 6) {                               /* the drums */
+        switch (pc) {
+        case 0: drum(IN_WADON, 88.0f, 0.95f * v * lvl(P_L_KEN), 0.7f, -0.12f, 0); break;
+        case 2: drum(IN_WADON, 88.0f, 0.45f * v * lvl(P_L_KEN), 0.4f, -0.12f, 0); break;
+        case 4: drum(IN_LANANG, 148.0f, 0.6f * v * lvl(P_L_KEN), 0.6f, 0.12f, 0); break;
+        case 5: drum(IN_LANANG, 196.0f, 0.55f * v * lvl(P_L_KEN), 3.0f, 0.12f, 0); break;
+        case 7: drum(IN_CENG, 1100.0f, 0.9f * v * lvl(P_L_CENG), 1.0f, 0.3f, 0); break;
+        case 9: drum(IN_CENG, 1100.0f, 0.5f * v * lvl(P_L_CENG), 0.55f, 0.3f, 0); break;
+        default: break;
+        }
+        return;
+    }
+    if (WHITE_OF[pc] < 0)
+        return;
+    if (ch == 7) {                               /* the suling: one line */
+        mod_sul = (int16_t)idx;
+        mod_sul_key = (uint8_t)note;
+        return;
+    }
+    if (ch == 8) {                               /* the selonding's iron keys (its large ones below C3) */
+        *h = play(note < 48 ? IN_IRON_LOW : IN_IRON, PART_CORE, pitch(idx), 0.85f * v, 0.0f, 0, 0);
+        return;
+    }
+    *h = play(INST[ch], PART[ch], pitch(idx), 0.85f * v * lvl(ch == 0 ? P_L_GENDER : ch <= 1 ? P_L_KOT : ch == 4 ? P_L_REY :
+                                                                P_L_CORE), PAN[ch], 0, 0);
+}
+
 static void run(int on);
 static void midi_in(uint32_t pkt)
 {
@@ -1080,12 +1212,25 @@ static void midi_in(uint32_t pkt)
         run(0);
         return;
     }
-    if (!midi_ch || s < 0x80 || s >= 0xF0 || (s & 15u) + 1u != midi_ch)
+    if (!midi_ch || s < 0x80 || s >= 0xF0)
         return;
     d1 &= 0x7Fu;
     d2 &= 0x7Fu;
     if ((s & 0xF0u) == 0x90u && !d2)
         s = 0x80u;                               /* a note on at 0 is a note off */
+    if (midi_module) {                           /* SOUND MODULE: channels MIDI CHANNEL .. +8 */
+        uint32_t k = ((s & 15u) + 16u - (midi_ch - 1u)) & 15u;
+        if (k < 9u && ((s & 0xF0u) == 0x90u || (s & 0xF0u) == 0x80u)) {
+            module_note((int)k, (s & 0xF0u) == 0x90u, (int)d1, (int)d2);
+            return;
+        }
+        if (k < 9u && (s & 0xF0u) == 0xB0u && d1 == 64u) {
+            sustain = d2 >= 64u;
+            return;
+        }
+    }
+    if ((s & 15u) + 1u != midi_ch)
+        return;
     switch (s & 0xF0u) {
     case 0x90: {
         int pc = (int)(d1 % 12u), o = (int)(d1 / 12u) - 5;
@@ -1135,6 +1280,8 @@ static void run(int on)
         eng_ending = 0;
         eng_bpm_now = target_bpm();
         loop_i = 0;
+        key_beat = 0;                            /* (a note chosen while stopped leads the first cycle) */
+        self_next = NONE;
         clk.count = 0;
         clk.left = 0;
         if (clk_out && !clk.ext)
@@ -1311,15 +1458,17 @@ static struct {
     float nlp, nbp;                              /* the breath's band-pass */
     int note;
 } sul = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -32768};
+int engine_suling_on(void) { return sul.amp > 1e-3f; }
 static void suling_block(float *L, float *R, uint32_t n)
 {
-    const int on = (eng_w.p[P_PARTS] & PB_SUL) && eng_running && core_c != NONE;
+    const int mod = mod_sul != -32768;           /* (SOUND MODULE: its channel's line) */
+    const int on = mod || ((eng_w.p[P_PARTS] & PB_SUL) && eng_running && core_c != NONE);
     const float dt = 1.0f / SR, vib = x127(P_S_VIB) * 0.012f, breath = x127(P_S_BREATH) * 0.12f;
     const float gk = 1.0f - fm_expf(-dt / (0.02f + 0.5f * x127(P_S_GLIDE) * x127(P_S_GLIDE)));
     float to = 0.0f, target = 0.0f, ak, nf;
     uint32_t i;
     if (on) {
-        int k = fold(core_c, 220.0f * fm_exp2f((float)eng_w.p[P_S_REG]));
+        int k = mod ? mod_sul : fold(core_c, 220.0f * fm_exp2f((float)eng_w.p[P_S_REG]));
         if (k != sul.note) {
             sul.note = k;
             sul.since = 0.0f;

@@ -54,7 +54,7 @@ turn ALGO -5
 # MIDI CC OUT: HOME's knobs and the gamelan go out
 tap GLO
 wait 100
-turn SELECT 7
+turn SELECT 8
 tap SEL
 wait 100
 said MIDI CC OUT

@@ -1,0 +1,32 @@
+# 1.3: Ombak as made plays at power-on (GILAK), the ensemble leading its own core melody: it moves (many tones),
+# lands on the first tone at every gong; a white key takes the lead at once; a cycle without one, and the ensemble
+# leads again. THE MELODY off (GAMELAN), and the core waits for you
+factory
+listen
+wait 500
+expect playing 1
+expect p0 5
+expect self 1
+corereset
+wait 40000
+expect cores_seen >4
+expect gong_lands >3
+expect gong_lands_off 0
+expect clips 0
+shot leads.png
+# you lead
+tapkey w3
+wait 1500
+expect self 0
+expect core 3
+wait 3000
+expect self 0
+# a cycle (8 beats at 60) without a key: the ensemble again
+wait 9000
+expect self 1
+# THE MELODY off: it holds your note
+set self 0
+tapkey w2
+wait 20000
+expect self 0
+expect core 2
